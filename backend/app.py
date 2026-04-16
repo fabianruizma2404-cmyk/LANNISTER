@@ -1,51 +1,55 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pytrends.request import TrendReq
-from googletrans import Translator
 import pandas as pd
+import os
 
 app = Flask(__name__)
 CORS(app)
 
 pytrends = TrendReq(hl='es', tz=360)
-translator = Translator()
 
-cache = {}
-
+# 🧠 Obtener top países sin traducción
 def top_paises(producto):
-    if producto in cache:
-        return cache[producto]
+    try:
+        # Variaciones simples (mejor que solo 1 palabra)
+        keywords = [
+            producto,
+            producto + " online",
+            producto + " shop"
+        ]
 
-    idiomas = ["en", "de", "fr"]
-    resultados = pd.DataFrame()
+        pytrends.build_payload(keywords, geo='')
+        df = pytrends.interest_by_region(resolution='COUNTRY')
 
-    traducciones = [translator.translate(producto, dest=lang).text for lang in idiomas]
+        if df.empty:
+            return []
 
-    for palabra in [producto] + traducciones:
-        try:
-            pytrends.build_payload([palabra], geo='')
-            df = pytrends.interest_by_region(resolution='COUNTRY')
-            df = df.rename(columns={palabra: palabra})
+        # Promedio entre keywords
+        df["Promedio"] = df.mean(axis=1)
+        df = df.sort_values(by="Promedio", ascending=False)
 
-            if resultados.empty:
-                resultados = df
-            else:
-                resultados = resultados.join(df, how="outer")
-        except:
-            pass
+        top3 = df.head(3)
 
-    resultados["Promedio"] = resultados.mean(axis=1)
-    resultados = resultados.sort_values(by="Promedio", ascending=False)
+        return list(top3.index)
 
-    top3 = resultados.head(3)
-    paises = list(top3.index)
+    except Exception as e:
+        print("ERROR:", e)
+        return []
 
-    cache[producto] = paises
-    return paises
-
+# 🌍 Endpoint
 @app.route("/trends")
 def trends():
     producto = request.args.get("producto")
-    return jsonify({"paises": top_paises(producto)})
 
-app.run(host="0.0.0.0", port=5000)
+    if not producto:
+        return jsonify({"error": "Producto requerido"}), 400
+
+    paises = top_paises(producto)
+
+    return jsonify({"paises": paises})
+
+# 🔧 Compatible con Railway
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
