@@ -21,7 +21,7 @@ pytrends = TrendReq(
 
 # 📍 Bucaramanga
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
-OPENCAGE_KEY = d65f4f736b76413792e477ff32b2fc11
+OPENCAGE_KEY = "d65f4f736b76413792e477ff32b2fc11"
 
 # 🌍 Traducción (NO rompe flujo)
 def traducir(texto, idioma):
