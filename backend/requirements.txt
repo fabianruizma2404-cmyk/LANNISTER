@@ -4,3 +4,4 @@ pytrends
 pandas
 requests
 gunicorn
+urllib3==1.26.16
