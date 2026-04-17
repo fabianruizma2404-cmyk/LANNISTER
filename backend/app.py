@@ -5,17 +5,15 @@ import pandas as pd
 import requests
 import os
 import math
-import random
 
 app = Flask(__name__)
 CORS(app)
 
 pytrends = TrendReq(hl='es', tz=360)
 
-# 📍 Bucaramanga
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
 
-# 🌍 Traducción
+# 🌍 Traducción (estable)
 def traducir(texto, idioma):
     try:
         res = requests.post(
@@ -23,18 +21,23 @@ def traducir(texto, idioma):
             json={"q": texto, "source": "auto", "target": idioma},
             timeout=5
         )
+        if res.status_code != 200:
+            raise Exception("Error traducción")
         return res.json()["translatedText"]
     except:
-        return texto
+        raise Exception("Fallo en servicio de traducción")
 
-# 🌎 Obtener capital
+# 🌎 Capital
 def obtener_capital(pais):
     try:
         res = requests.get(f"https://restcountries.com/v3.1/name/{pais}")
+        if res.status_code != 200:
+            raise Exception("Error capital")
+
         data = res.json()
         return data[0]["capital"][0]
     except:
-        return pais
+        raise Exception(f"No se pudo obtener capital de {pais}")
 
 # 📍 Geocoding
 def geocode(ciudad):
@@ -43,12 +46,20 @@ def geocode(ciudad):
         res = requests.get(
             f"https://api.opencagedata.com/geocode/v1/json?q={ciudad}&key={key}"
         )
+
+        if res.status_code != 200:
+            raise Exception("Error geocoding")
+
         data = res.json()
+
+        if not data["results"]:
+            raise Exception("Sin coordenadas")
+
         return data["results"][0]["geometry"]
     except:
-        return {"lat": 0, "lng": 0}
+        raise Exception(f"No se pudo geocodificar {ciudad}")
 
-# 📏 Distancia (Haversine)
+# 📏 Distancia
 def distancia(lat1, lon1, lat2, lon2):
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -58,14 +69,9 @@ def distancia(lat1, lon1, lat2, lon2):
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# 💰 Cálculo costo
-def calcular_envio(ciudad):
-    coords = geocode(ciudad)
-
-    peso = random.uniform(2, 6)
-    largo = random.uniform(20, 60)
-    ancho = random.uniform(20, 60)
-    alto = random.uniform(20, 60)
+# 💰 Cálculo
+def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
+    coords = geocode(f"{ciudad}, {pais}")
 
     peso_vol = (largo * ancho * alto) / 5000
     peso_final = max(peso, peso_vol)
@@ -80,69 +86,73 @@ def calcular_envio(ciudad):
     if dist > 3000:
         costo *= 1.2
 
-    costo *= 1 + (random.random() * 0.1 - 0.05)
-
     return {
         "ciudad": ciudad,
-        "costo": round(costo, 2),
+        "pais": pais,
+        "lat": coords["lat"],
+        "lng": coords["lng"],
         "distancia": int(dist),
-        "peso": round(peso_final, 2)
+        "peso": round(peso_final, 2),
+        "costo": round(costo, 2)
     }
 
-# 🧠 Trends + cálculo completo
-@app.route("/cotizar")
-def cotizar():
-    producto = request.args.get("producto")
-
-    if not producto:
-        return jsonify({"error": "Producto requerido"}), 400
-
+# 🧠 LÓGICA ORIGINAL DE TRENDS (RESPETADA)
+def top_paises_multilingue(producto):
     idiomas = ["en", "de", "fr"]
+    resultados = pd.DataFrame()
+
     traducciones = [traducir(producto, lang) for lang in idiomas]
     keywords = [producto] + traducciones
 
-    resultados = pd.DataFrame()
-
     for palabra in keywords:
-        try:
-            pytrends.build_payload([palabra], geo='')
-            df = pytrends.interest_by_region(resolution='COUNTRY')
+        pytrends.build_payload([palabra], geo='')
+        df = pytrends.interest_by_region(resolution='COUNTRY')
 
-            if df.empty:
-                continue
-
-            df = df.rename(columns={palabra: palabra})
-
-            if resultados.empty:
-                resultados = df
-            else:
-                resultados = resultados.join(df, how="outer")
-
-        except:
+        if df.empty:
             continue
 
+        df = df.rename(columns={palabra: palabra})
+
+        if resultados.empty:
+            resultados = df
+        else:
+            resultados = resultados.join(df, how="outer")
+
     if resultados.empty:
-        return jsonify({"resultados": []})
+        raise Exception("No se pudieron obtener datos de Google Trends")
 
     resultados["Promedio"] = resultados.mean(axis=1)
     resultados = resultados.sort_values(by="Promedio", ascending=False)
 
-    top3 = resultados.head(3).index.tolist()
+    return resultados.head(3).index.tolist()
 
-    cotizaciones = []
+# 🚀 ENDPOINT PRINCIPAL
+@app.route("/cotizar")
+def cotizar():
+    try:
+        producto = request.args.get("producto")
 
-    for pais in top3:
-        capital = obtener_capital(pais)
-        envio = calcular_envio(capital)
+        peso = float(request.args.get("peso", 3))
+        largo = float(request.args.get("largo", 30))
+        ancho = float(request.args.get("ancho", 30))
+        alto = float(request.args.get("alto", 30))
 
-        cotizaciones.append({
-            "pais": pais,
-            **envio
-        })
+        paises = top_paises_multilingue(producto)
 
-    return jsonify({"resultados": cotizaciones})
+        resultados = []
 
-# 🔧 Railway
+        for pais in paises:
+            capital = obtener_capital(pais)
+            envio = calcular_envio(capital, pais, peso, largo, ancho, alto)
+            resultados.append(envio)
+
+        return jsonify({"resultados": resultados})
+
+    except Exception as e:
+        return jsonify({
+            "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
+        }), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
