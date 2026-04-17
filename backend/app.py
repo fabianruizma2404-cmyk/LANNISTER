@@ -56,7 +56,7 @@ def obtener_capital(pais):
 # 📍 Geocoding
 def geocode(ciudad):
     try:
-        key = os.environ.get("OPENCAGE_KEY")
+        key = os.environ.get("d65f4f736b76413792e477ff32b2fc11")
 
         res = requests.get(
             f"https://api.opencagedata.com/geocode/v1/json?q={ciudad}&key={key}",
