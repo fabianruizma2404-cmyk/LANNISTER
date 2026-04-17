@@ -13,7 +13,7 @@ body {
 }
 
 h1 {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .search {
@@ -26,13 +26,12 @@ input {
   padding: 12px;
   border-radius: 10px;
   border: none;
-  width: 60%;
 }
 
 button {
   padding: 12px 20px;
-  border: none;
   border-radius: 10px;
+  border: none;
   background: #00c6ff;
   color: white;
   cursor: pointer;
@@ -43,8 +42,11 @@ button:hover {
   background: #0072ff;
 }
 
-.loading {
-  margin-top: 20px;
+.controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 20px 0;
 }
 
 .cards {
@@ -68,4 +70,8 @@ button:hover {
 
 .card h3 {
   color: #00ffcc;
+}
+
+.loading {
+  margin-top: 20px;
 }
