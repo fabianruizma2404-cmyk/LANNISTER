@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import "./styles.css";
 
-const API_KEY = "TU_API_KEY_OPENCAGE";
-const BACKEND_URL = "https://TU-BACKEND.up.railway.app";
+const API_KEY = "d65f4f736b76413792e477ff32b2fc11";
+const BACKEND_URL = "https://lannister-production.up.railway.app";
 
 const ORIGEN = { lat: 7.119349, lon: -73.122741 };
 
