@@ -21,6 +21,7 @@ pytrends = TrendReq(
 
 # 📍 Bucaramanga
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
+OPENCAGE_KEY = d65f4f736b76413792e477ff32b2fc11
 
 # 🌍 Traducción (NO rompe flujo)
 def traducir(texto, idioma):
@@ -58,7 +59,7 @@ def obtener_capital(pais):
 # 📍 Geocoding
 def geocode(ciudad):
     try:
-        key = os.environ.get("d65f4f736b76413792e477ff32b2fc11")
+        key = os.environ.get("OPENCAGE_KEY")
 
         if not key:
             raise Exception("Falta API KEY OpenCage")
@@ -123,7 +124,7 @@ def top_paises_multilingue(producto):
     print("Traduciendo...")
 
     traducciones = [traducir(producto, lang) for lang in idiomas]
-    keywords = [producto] + traducciones
+    keywords = list(set([producto] + traducciones))
 
     print("Keywords:", keywords)
 
