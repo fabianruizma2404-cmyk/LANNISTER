@@ -5,7 +5,6 @@ import pandas as pd
 import requests
 import os
 import math
-import random
 
 app = Flask(__name__)
 CORS(app)
@@ -27,7 +26,7 @@ def traducir(texto, idioma):
     except:
         return texto
 
-# 🌎 Obtener capital
+# 🌎 Capital
 def obtener_capital(pais):
     try:
         res = requests.get(f"https://restcountries.com/v3.1/name/{pais}")
@@ -38,17 +37,14 @@ def obtener_capital(pais):
 
 # 📍 Geocoding
 def geocode(ciudad):
-    try:
-        key = os.environ.get("d65f4f736b76413792e477ff32b2fc11")
-        res = requests.get(
-            f"https://api.opencagedata.com/geocode/v1/json?q={ciudad}&key={key}"
-        )
-        data = res.json()
-        return data["results"][0]["geometry"]
-    except:
-        return {"lat": 0, "lng": 0}
+    key = os.environ.get("d65f4f736b76413792e477ff32b2fc11")
+    res = requests.get(
+        f"https://api.opencagedata.com/geocode/v1/json?q={ciudad}&key={key}"
+    )
+    data = res.json()
+    return data["results"][0]["geometry"]
 
-# 📏 Distancia (Haversine)
+# 📏 Distancia real
 def distancia(lat1, lon1, lat2, lon2):
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -58,14 +54,9 @@ def distancia(lat1, lon1, lat2, lon2):
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# 💰 Cálculo costo
-def calcular_envio(ciudad):
-    coords = geocode(ciudad)
-
-    peso = random.uniform(2, 6)
-    largo = random.uniform(20, 60)
-    ancho = random.uniform(20, 60)
-    alto = random.uniform(20, 60)
+# 💰 Cálculo
+def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
+    coords = geocode(f"{ciudad}, {pais}")
 
     peso_vol = (largo * ancho * alto) / 5000
     peso_final = max(peso, peso_vol)
@@ -80,22 +71,25 @@ def calcular_envio(ciudad):
     if dist > 3000:
         costo *= 1.2
 
-    costo *= 1 + (random.random() * 0.1 - 0.05)
-
     return {
         "ciudad": ciudad,
-        "costo": round(costo, 2),
+        "pais": pais,
+        "lat": coords["lat"],
+        "lng": coords["lng"],
         "distancia": int(dist),
-        "peso": round(peso_final, 2)
+        "peso": round(peso_final, 2),
+        "costo": round(costo, 2)
     }
 
-# 🧠 Trends + cálculo completo
+# 🧠 Endpoint principal
 @app.route("/cotizar")
 def cotizar():
     producto = request.args.get("producto")
 
-    if not producto:
-        return jsonify({"error": "Producto requerido"}), 400
+    peso = float(request.args.get("peso", 3))
+    largo = float(request.args.get("largo", 30))
+    ancho = float(request.args.get("ancho", 30))
+    alto = float(request.args.get("alto", 30))
 
     idiomas = ["en", "de", "fr"]
     traducciones = [traducir(producto, lang) for lang in idiomas]
@@ -133,16 +127,12 @@ def cotizar():
 
     for pais in top3:
         capital = obtener_capital(pais)
-        envio = calcular_envio(capital)
+        envio = calcular_envio(capital, pais, peso, largo, ancho, alto)
 
-        cotizaciones.append({
-            "pais": pais,
-            **envio
-        })
+        cotizaciones.append(envio)
 
     return jsonify({"resultados": cotizaciones})
 
-# 🔧 Railway
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
