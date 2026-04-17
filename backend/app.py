@@ -5,43 +5,46 @@ import pandas as pd
 import requests
 import os
 import math
+import time
 
 app = Flask(__name__)
 CORS(app)
 
-pytrends = TrendReq(hl='es', tz=360)
+# 🔥 Pytrends más estable
+pytrends = TrendReq(
+    hl='es',
+    tz=360,
+    timeout=(10, 25),
+    retries=2,
+    backoff_factor=0.1
+)
 
 # 📍 Bucaramanga
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
 
-# 🌍 Traducción ROBUSTA (NO rompe flujo)
+# 🌍 Traducción (NO rompe flujo)
 def traducir(texto, idioma):
     try:
         res = requests.post(
             "https://libretranslate.de/translate",
-            json={
-                "q": texto,
-                "source": "auto",
-                "target": idioma
-            },
+            json={"q": texto, "source": "auto", "target": idioma},
             timeout=5
         )
 
         if res.status_code == 200:
             return res.json()["translatedText"]
 
-        return texto  # fallback
-
+        return texto
     except:
-        return texto  # 🔥 clave: no romper
+        return texto
 
-# 🌎 Obtener capital
+# 🌎 Capital
 def obtener_capital(pais):
     try:
-        res = requests.get(f"https://restcountries.com/v3.1/name/{pais}", timeout=5)
-
-        if res.status_code != 200:
-            raise Exception()
+        res = requests.get(
+            f"https://restcountries.com/v3.1/name/{pais}",
+            timeout=5
+        )
 
         data = res.json()
 
@@ -49,34 +52,33 @@ def obtener_capital(pais):
             return data[0]["capital"][0]
 
         return pais
-
-    except:
-        raise Exception(f"No se pudo obtener capital de {pais}")
+    except Exception as e:
+        raise Exception(f"Error capital {pais}: {str(e)}")
 
 # 📍 Geocoding
 def geocode(ciudad):
     try:
         key = os.environ.get("d65f4f736b76413792e477ff32b2fc11")
 
+        if not key:
+            raise Exception("Falta API KEY OpenCage")
+
         res = requests.get(
             f"https://api.opencagedata.com/geocode/v1/json?q={ciudad}&key={key}",
             timeout=5
         )
 
-        if res.status_code != 200:
-            raise Exception()
-
         data = res.json()
 
         if not data["results"]:
-            raise Exception()
+            raise Exception("Sin resultados")
 
         return data["results"][0]["geometry"]
 
-    except:
-        raise Exception(f"No se pudo geocodificar {ciudad}")
+    except Exception as e:
+        raise Exception(f"Error geocode {ciudad}: {str(e)}")
 
-# 📏 Distancia (Haversine)
+# 📏 Distancia
 def distancia(lat1, lon1, lat2, lon2):
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -86,7 +88,7 @@ def distancia(lat1, lon1, lat2, lon2):
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# 💰 Cálculo de envío
+# 💰 Cálculo
 def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
     coords = geocode(f"{ciudad}, {pais}")
 
@@ -113,17 +115,22 @@ def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
         "costo": round(costo, 2)
     }
 
-# 🧠 FUNCIÓN ORIGINAL DE TRENDS (MULTILENGUAJE)
+# 🧠 TRENDS MULTILENGUAJE (CORREGIDO)
 def top_paises_multilingue(producto):
     idiomas = ["en", "de", "fr"]
     resultados = pd.DataFrame()
 
-    # 🔥 Traducciones (pero tolerante a fallos)
+    print("Traduciendo...")
+
     traducciones = [traducir(producto, lang) for lang in idiomas]
     keywords = [producto] + traducciones
 
+    print("Keywords:", keywords)
+
     for palabra in keywords:
         try:
+            print("Consultando:", palabra)
+
             pytrends.build_payload(
                 [palabra],
                 timeframe='today 12-m',
@@ -135,7 +142,10 @@ def top_paises_multilingue(producto):
                 inc_low_vol=True
             )
 
+            time.sleep(1)  # 🔥 evita bloqueo
+
             if df.empty:
+                print("Sin datos para:", palabra)
                 continue
 
             df = df.rename(columns={palabra: palabra})
@@ -145,18 +155,26 @@ def top_paises_multilingue(producto):
             else:
                 resultados = resultados.join(df, how="outer")
 
-        except:
+        except Exception as e:
+            print("Error en palabra:", palabra, str(e))
             continue
 
     if resultados.empty:
-        raise Exception("No se pudieron obtener datos de Google Trends")
+        raise Exception("Google Trends bloqueado o sin datos")
 
     resultados["Promedio"] = resultados.mean(axis=1)
     resultados = resultados.sort_values(by="Promedio", ascending=False)
 
-    return resultados.head(3).index.tolist()
+    top3 = resultados.head(3).index.tolist()
 
-# 🚀 ENDPOINT PRINCIPAL
+    print("Top países:", top3)
+
+    if len(top3) < 3:
+        raise Exception("Menos de 3 países")
+
+    return top3
+
+# 🚀 ENDPOINT
 @app.route("/cotizar")
 def cotizar():
     try:
@@ -170,22 +188,26 @@ def cotizar():
         ancho = float(request.args.get("ancho", 30))
         alto = float(request.args.get("alto", 30))
 
-        paises = top_paises_multilingue(producto)
+        print("=== NUEVA CONSULTA ===")
+        print("Producto:", producto)
 
-        if len(paises) < 3:
-            raise Exception("No suficientes países")
+        paises = top_paises_multilingue(producto)
 
         resultados = []
 
         for pais in paises:
+            print("Procesando:", pais)
+
             capital = obtener_capital(pais)
+            print("Capital:", capital)
+
             envio = calcular_envio(capital, pais, peso, largo, ancho, alto)
             resultados.append(envio)
 
         return jsonify({"resultados": resultados})
 
     except Exception as e:
-        print("ERROR:", str(e))  # 🔥 útil para logs en Railway
+        print("ERROR FINAL:", str(e))
 
         return jsonify({
             "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
