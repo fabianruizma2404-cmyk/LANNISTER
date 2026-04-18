@@ -1,15 +1,24 @@
-import React, { useState } from "react";
-import Dashboard from "./Dashboard";
+import React, { useState, useEffect } from "react";
+import Dashboard from "./pages/Dashboard";
 import "./styles.css";
 
 const BACKEND_URL = "https://lannister-production.up.railway.app";
 
 export default function App() {
-  const [view, setView] = useState("home"); // 🔥 CONTROL TOTAL
+  const [view, setView] = useState("home");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const token = localStorage.getItem("token");
+
+  // 🔥 CONTROL DE SESIÓN AL CARGAR
+  useEffect(() => {
+    if (token) {
+      setView("dashboard");
+    } else {
+      setView("home");
+    }
+  }, []);
 
   // 🔐 LOGIN
   const login = async () => {
@@ -36,18 +45,43 @@ export default function App() {
     }
   };
 
+  // 📝 REGISTER REAL
+  const register = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("Usuario creado correctamente");
+        setView("login");
+      } else {
+        alert(data.error || "Error en registro");
+      }
+
+    } catch (error) {
+      alert("Error de conexión");
+    }
+  };
+
   // 🔓 LOGOUT
   const logout = () => {
     localStorage.removeItem("token");
     setView("home");
   };
 
-  // 🔥 SI YA ESTÁ LOGUEADO
-  if (token && view !== "home") {
+  // 🔥 SI ESTÁ LOGUEADO → DASHBOARD
+  if (view === "dashboard" && token) {
     return <Dashboard logout={logout} />;
   }
 
-  // 🏠 HOME (LANDING PAGE)
+  // 🏠 HOME
   if (view === "home") {
     return (
       <div className="home">
@@ -96,17 +130,29 @@ export default function App() {
     );
   }
 
-  // 📝 REGISTRO (básico por ahora)
+  // 📝 REGISTER
   if (view === "register") {
     return (
       <div className="login-box">
         <h2>📝 Registro</h2>
 
-        <input placeholder="Correo" />
-        <input placeholder="Contraseña" />
-        <input placeholder="Código de acceso" />
+        <input
+          type="email"
+          placeholder="Correo"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <button>Registrarse</button>
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button onClick={register}>
+          Registrarse
+        </button>
 
         <p onClick={() => setView("home")} className="link">
           ← Volver
