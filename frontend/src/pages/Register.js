@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 const CODIGO_SECRETO = "EXPORTIA2026";
 
 export default function Register() {
