@@ -195,7 +195,37 @@ def top_paises_multilingue(producto):
 def init_db():
     db.create_all()
     return "DB lista"
-    
+
+@app.route("/register", methods=["POST"])
+def register():
+    data = request.json
+
+    hashed = generate_password_hash(data["password"])
+
+    user = Usuario(
+        email=data["email"],
+        password=hashed
+    )
+
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({"msg": "Usuario creado"})
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+
+    user = Usuario.query.filter_by(email=data["email"]).first()
+
+    if not user or not check_password_hash(user.password, data["password"]):
+        return jsonify({"error": "Credenciales inválidas"}), 401
+
+    token = create_access_token(identity=user.id)
+
+    return jsonify({"token": token})
+
+@jwt_required()
 @app.route("/cotizar")
 def cotizar():
     try:
