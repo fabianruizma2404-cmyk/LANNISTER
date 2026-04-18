@@ -4,6 +4,8 @@ import "./styles.css";
 const BACKEND_URL = "https://lannister-production.up.railway.app";
 
 export default function App() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [producto, setProducto] = useState("");
   const [resultados, setResultados] = useState([]);
 
@@ -19,9 +21,11 @@ export default function App() {
     setResultados([]);
 
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/cotizar?producto=${producto}&peso=${peso}&largo=${largo}&ancho=${ancho}&alto=${alto}`
-      );
+      const res = await fetch(`${BACKEND_URL}/cotizar?producto=${producto}&peso=${peso}&largo=${largo}&ancho=${ancho}&alto=${alto}`, {
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("token")}`
+  }
+});
 
       const data = await res.json();
 
@@ -38,8 +42,55 @@ export default function App() {
 
     setLoading(false);
   };
+  const BACKEND_URL = "https://TU-BACKEND.up.railway.app";
+
+const login = async () => {
+  try {
+    const res = await fetch(`${BACKEND_URL}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      alert("Login exitoso");
+    } else {
+      alert("Error en login");
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert("Error de conexión");
+  }
+};
 
   return (
+    <div className="login-box">
+  <h2>🔐 Login</h2>
+
+  <input
+    type="email"
+    placeholder="Correo"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+  />
+
+  <input
+    type="password"
+    placeholder="Contraseña"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+  />
+
+  <button onClick={login}>
+    Iniciar sesión
+  </button>
+</div>
     <div className="container">
       <h1>🌍 Explorador de Mercados</h1>
 
