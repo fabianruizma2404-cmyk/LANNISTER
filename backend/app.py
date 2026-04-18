@@ -6,6 +6,16 @@ import requests
 import os
 import math
 import time
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
+
+db = SQLAlchemy(app)
+jwt = JWTManager(app)
 
 app = Flask(__name__)
 CORS(app)
@@ -22,6 +32,11 @@ pytrends = TrendReq(
 # 📍 Bucaramanga
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
 OPENCAGE_KEY = "d65f4f736b76413792e477ff32b2fc11"
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
 
 # 🌍 Traducción (NO rompe flujo)
 def traducir(texto, idioma):
@@ -176,6 +191,11 @@ def top_paises_multilingue(producto):
     return top3
 
 # 🚀 ENDPOINT
+@app.route("/init-db")
+def init_db():
+    db.create_all()
+    return "DB lista"
+    
 @app.route("/cotizar")
 def cotizar():
     try:
