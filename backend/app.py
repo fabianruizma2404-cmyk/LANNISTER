@@ -9,6 +9,13 @@ import time
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+@app.route("/cotizar")
+@jwt_required()
+def cotizar():
+    usuario = get_jwt_identity()
+    print("Usuario autenticado:", usuario)
 app = Flask(__name__)
 CORS(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
@@ -225,9 +232,12 @@ def login():
 
     return jsonify({"token": token})
 
-@jwt_required()
+
 @app.route("/cotizar")
+@jwt_required()
 def cotizar():
+    usuario = get_jwt_identity()
+    print("Usuario autenticado:", usuario)
     try:
         producto = request.args.get("producto")
 
