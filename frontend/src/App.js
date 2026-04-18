@@ -16,16 +16,47 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
 
+  const token = localStorage.getItem("token");
+
+  // 🔐 LOGIN
+  const login = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        window.location.reload(); // 🔥 recarga app
+      } else {
+        alert("Credenciales incorrectas");
+      }
+
+    } catch (error) {
+      alert("Error de conexión");
+    }
+  };
+
+  // 🚀 BUSCAR
   const buscar = async () => {
     setLoading(true);
     setResultados([]);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/cotizar?producto=${producto}&peso=${peso}&largo=${largo}&ancho=${ancho}&alto=${alto}`, {
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`
-  }
-});
+      const res = await fetch(
+        `${BACKEND_URL}/cotizar?producto=${producto}&peso=${peso}&largo=${largo}&ancho=${ancho}&alto=${alto}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
 
       const data = await res.json();
 
@@ -34,7 +65,7 @@ export default function App() {
         return;
       }
 
-      setResultados(data.resultados);
+      setResultados(data.resultados || []);
 
     } catch (err) {
       alert("Error de conexión con el servidor");
@@ -42,60 +73,45 @@ export default function App() {
 
     setLoading(false);
   };
-  const BACKEND_URL = "https://TU-BACKEND.up.railway.app";
 
-const login = async () => {
-  try {
-    const res = await fetch(`${BACKEND_URL}/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, password })
-    });
+  // 🔓 LOGOUT
+  const logout = () => {
+    localStorage.removeItem("token");
+    window.location.reload();
+  };
 
-    const data = await res.json();
+  // 🔴 SI NO HAY TOKEN → LOGIN
+  if (!token) {
+    return (
+      <div className="login-box">
+        <h2>🔐 Login</h2>
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      alert("Login exitoso");
-    } else {
-      alert("Error en login");
-    }
+        <input
+          type="email"
+          placeholder="Correo"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-  } catch (error) {
-    console.error(error);
-    alert("Error de conexión");
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button onClick={login}>
+          Iniciar sesión
+        </button>
+      </div>
+    );
   }
-};
-const token = localStorage.getItem("token");
 
-if (!token) {
-  return <Login />;
-}
+  // 🟢 SI HAY TOKEN → APP
   return (
-    <div className="login-box">
-  <h2>🔐 Login</h2>
-
-  <input
-    type="email"
-    placeholder="Correo"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-  />
-
-  <input
-    type="password"
-    placeholder="Contraseña"
-    value={password}
-    onChange={(e) => setPassword(e.target.value)}
-  />
-
-  <button onClick={login}>
-    Iniciar sesión
-  </button>
-</div>
     <div className="container">
+      <button onClick={logout} className="logout">Cerrar sesión</button>
+
       <h1>🌍 Explorador de Mercados</h1>
 
       <div className="search">
@@ -108,16 +124,16 @@ if (!token) {
       </div>
 
       <div className="controls">
-        <input type="number" value={peso} onChange={(e)=>setPeso(e.target.value)} placeholder="Peso (kg)" />
-        <input type="number" value={largo} onChange={(e)=>setLargo(e.target.value)} placeholder="Largo (cm)" />
-        <input type="number" value={ancho} onChange={(e)=>setAncho(e.target.value)} placeholder="Ancho (cm)" />
-        <input type="number" value={alto} onChange={(e)=>setAlto(e.target.value)} placeholder="Alto (cm)" />
+        <input type="number" value={peso} onChange={(e)=>setPeso(e.target.value)} />
+        <input type="number" value={largo} onChange={(e)=>setLargo(e.target.value)} />
+        <input type="number" value={ancho} onChange={(e)=>setAncho(e.target.value)} />
+        <input type="number" value={alto} onChange={(e)=>setAlto(e.target.value)} />
       </div>
 
       {loading && <p className="loading">Analizando...</p>}
 
       <div className="cards">
-        {resultados.map((r, i) => (
+        {Array.isArray(resultados) && resultados.map((r, i) => (
           <div key={i} className="card">
             <h2>{r.pais}</h2>
             <p>📍 {r.ciudad}, {r.pais}</p>
