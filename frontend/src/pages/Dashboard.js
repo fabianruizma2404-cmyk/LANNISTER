@@ -38,10 +38,13 @@ export default function Dashboard({ setVista }) {
 
       const data = await res.json();
 
+     
       if (data.error) {
-        alert(data.error);
-        return;
-      }
+  console.error(data.error);
+  alert(data.error);
+  setLoading(false);
+  return;
+}
 
       setResultados(data.resultados || []);
 
