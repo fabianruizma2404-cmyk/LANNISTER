@@ -68,7 +68,11 @@ const login = async () => {
     alert("Error de conexión");
   }
 };
+const token = localStorage.getItem("token");
 
+if (!token) {
+  return <Login />;
+}
   return (
     <div className="login-box">
   <h2>🔐 Login</h2>
