@@ -57,7 +57,8 @@ export default function Dashboard({ setVista }) {
     localStorage.removeItem("token");
     window.location.reload(); // vuelve a login
   };
-
+const data = await res.json();
+console.log("RESPUESTA BACKEND:", data);
   return (
     <div className="container">
 
