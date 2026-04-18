@@ -13,12 +13,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
-
+app = Flask(__name__)
+CORS(app)
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
-app = Flask(__name__)
-CORS(app)
+
 
 # 🔥 Pytrends más estable
 pytrends = TrendReq(
