@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./styles.css";
 
-const BACKEND_URL = "https://lannister-production.up.railway.app";
+export default function Dashboard() {
+  const BACKEND_URL = "https://lannister-production.up.railway.app";
 
-export default function Dashboard({ logout }) {
+  const nav = useNavigate();
+
   const [producto, setProducto] = useState("");
   const [resultados, setResultados] = useState([]);
 
@@ -16,6 +19,12 @@ export default function Dashboard({ logout }) {
 
   const token = localStorage.getItem("token");
 
+  // 🔓 LOGOUT CORREGIDO
+  const logout = () => {
+    localStorage.removeItem("token");
+    nav("/"); // volver al home
+  };
+
   // 🚀 CONSULTAR BACKEND
   const buscar = async () => {
     if (!producto) {
@@ -25,6 +34,7 @@ export default function Dashboard({ logout }) {
 
     if (!token) {
       alert("Sesión expirada");
+      nav("/login");
       return;
     }
 
@@ -45,8 +55,8 @@ export default function Dashboard({ logout }) {
 
       console.log("RESPUESTA BACKEND:", data);
 
-      if (data.error) {
-        alert(data.error);
+      if (!res.ok || data.error) {
+        alert(data.error || "Error en la consulta");
         setLoading(false);
         return;
       }
