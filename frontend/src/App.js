@@ -20,7 +20,7 @@ export default function App() {
       <Routes>
 
         {/* 🏠 HOME */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<h1>HOME FUNCIONANDO</h1>} />
 
         {/* 🔐 LOGIN */}
         <Route path="/login" element={<Login backend={BACKEND_URL} />} />
