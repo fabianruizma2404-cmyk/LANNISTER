@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./styles.css";
+import "../styles.css";
 
 export default function Dashboard() {
   const BACKEND_URL = "https://lannister-production.up.railway.app";
