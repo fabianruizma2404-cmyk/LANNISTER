@@ -3,7 +3,7 @@ import "./styles.css";
 
 const BACKEND_URL = "https://lannister-production.up.railway.app";
 
-export default function Dashboard({ setVista }) {
+export default function Dashboard({ logout }) {
   const [producto, setProducto] = useState("");
   const [resultados, setResultados] = useState([]);
 
@@ -23,6 +23,11 @@ export default function Dashboard({ setVista }) {
       return;
     }
 
+    if (!token) {
+      alert("Sesión expirada");
+      return;
+    }
+
     setLoading(true);
     setResultados([]);
 
@@ -38,13 +43,13 @@ export default function Dashboard({ setVista }) {
 
       const data = await res.json();
 
-     
+      console.log("RESPUESTA BACKEND:", data);
+
       if (data.error) {
-  console.error(data.error);
-  alert(data.error);
-  setLoading(false);
-  return;
-}
+        alert(data.error);
+        setLoading(false);
+        return;
+      }
 
       setResultados(data.resultados || []);
 
@@ -55,13 +60,6 @@ export default function Dashboard({ setVista }) {
     setLoading(false);
   };
 
-  // 🔓 LOGOUT
-  const logout = () => {
-    localStorage.removeItem("token");
-    window.location.reload(); // vuelve a login
-  };
-const data = await res.json();
-console.log("RESPUESTA BACKEND:", data);
   return (
     <div className="container">
 
@@ -86,25 +84,25 @@ console.log("RESPUESTA BACKEND:", data);
         <input
           type="number"
           value={peso}
-          onChange={(e) => setPeso(e.target.value)}
+          onChange={(e) => setPeso(Number(e.target.value))}
           placeholder="Peso (kg)"
         />
         <input
           type="number"
           value={largo}
-          onChange={(e) => setLargo(e.target.value)}
+          onChange={(e) => setLargo(Number(e.target.value))}
           placeholder="Largo (cm)"
         />
         <input
           type="number"
           value={ancho}
-          onChange={(e) => setAncho(e.target.value)}
+          onChange={(e) => setAncho(Number(e.target.value))}
           placeholder="Ancho (cm)"
         />
         <input
           type="number"
           value={alto}
-          onChange={(e) => setAlto(e.target.value)}
+          onChange={(e) => setAlto(Number(e.target.value))}
           placeholder="Alto (cm)"
         />
       </div>
