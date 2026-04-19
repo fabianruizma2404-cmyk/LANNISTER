@@ -7,22 +7,31 @@ import os
 import math
 import time
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import timedelta
 
 app = Flask(__name__)
 CORS(app)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+
+# 🔥 FIX SUPABASE (MUY IMPORTANTE)
+uri = os.environ.get("DATABASE_URL")
+if uri and uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=1)
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
+# 🔥 CREAR DB AUTOMÁTICAMENTE
+with app.app_context():
+    db.create_all()
 
-
-# 🔥 Pytrends más estable
+# 🔥 Pytrends estable
 pytrends = TrendReq(
     hl='es',
     tz=360,
@@ -31,16 +40,16 @@ pytrends = TrendReq(
     backoff_factor=0.1
 )
 
-# 📍 Bucaramanga
+# 📍 Origen (Bucaramanga)
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
-OPENCAGE_KEY = "d65f4f736b76413792e477ff32b2fc11"
 
+# 👤 Modelo Usuario
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
 
-# 🌍 Traducción (NO rompe flujo)
+# 🌍 Traducción
 def traducir(texto, idioma):
     try:
         res = requests.post(
@@ -48,22 +57,19 @@ def traducir(texto, idioma):
             json={"q": texto, "source": "auto", "target": idioma},
             timeout=5
         )
-
         if res.status_code == 200:
             return res.json()["translatedText"]
-
         return texto
     except:
         return texto
 
-# 🌎 Capital
+# 🌎 Obtener capital
 def obtener_capital(pais):
     try:
         res = requests.get(
             f"https://restcountries.com/v3.1/name/{pais}",
             timeout=5
         )
-
         data = res.json()
 
         if isinstance(data, list) and "capital" in data[0]:
@@ -106,7 +112,7 @@ def distancia(lat1, lon1, lat2, lon2):
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# 💰 Cálculo
+# 💰 Cálculo de envío
 def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
     coords = geocode(f"{ciudad}, {pais}")
 
@@ -133,74 +139,65 @@ def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
         "costo": round(costo, 2)
     }
 
-# 🧠 TRENDS MULTILENGUAJE (CORREGIDO)
+# 🧠 Google Trends multilenguaje
 def top_paises_multilingue(producto):
     idiomas = ["en", "de", "fr"]
     resultados = pd.DataFrame()
 
-    print("Traduciendo...")
-
     traducciones = [traducir(producto, lang) for lang in idiomas]
     keywords = list(set([producto] + traducciones))
 
-    print("Keywords:", keywords)
-
     for palabra in keywords:
         try:
-            print("Consultando:", palabra)
-
-            pytrends.build_payload(
-                [palabra],
-                timeframe='today 12-m',
-                geo=''
-            )
+            pytrends.build_payload([palabra], timeframe='today 12-m', geo='')
 
             df = pytrends.interest_by_region(
                 resolution='COUNTRY',
                 inc_low_vol=True
             )
 
-            time.sleep(1)  # 🔥 evita bloqueo
+            time.sleep(1)
 
             if df.empty:
-                print("Sin datos para:", palabra)
                 continue
-
-            df = df.rename(columns={palabra: palabra})
 
             if resultados.empty:
                 resultados = df
             else:
                 resultados = resultados.join(df, how="outer")
 
-        except Exception as e:
-            print("Error en palabra:", palabra, str(e))
+        except:
             continue
 
     if resultados.empty:
-        raise Exception("Google Trends bloqueado o sin datos")
+        raise Exception("Google Trends sin datos")
 
     resultados["Promedio"] = resultados.mean(axis=1)
     resultados = resultados.sort_values(by="Promedio", ascending=False)
 
     top3 = resultados.head(3).index.tolist()
 
-    print("Top países:", top3)
-
     if len(top3) < 3:
         raise Exception("Menos de 3 países")
 
     return top3
 
-# 🚀 ENDPOINT
+# 🚀 INIT DB (opcional)
 @app.route("/init-db")
 def init_db():
     db.create_all()
     return "DB lista"
 
+# 📝 REGISTER
 @app.route("/register", methods=["POST"])
 def register():
     data = request.json
+
+    if not data or not data.get("email") or not data.get("password"):
+        return jsonify({"error": "Faltan datos"}), 400
+
+    if Usuario.query.filter_by(email=data["email"]).first():
+        return jsonify({"error": "Usuario ya existe"}), 400
 
     hashed = generate_password_hash(data["password"])
 
@@ -214,9 +211,13 @@ def register():
 
     return jsonify({"msg": "Usuario creado"})
 
+# 🔐 LOGIN
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
+
+    if not data or not data.get("email") or not data.get("password"):
+        return jsonify({"error": "Datos incompletos"}), 400
 
     user = Usuario.query.filter_by(email=data["email"]).first()
 
@@ -227,12 +228,13 @@ def login():
 
     return jsonify({"token": token})
 
-
+# 📦 COTIZADOR
 @app.route("/cotizar")
 @jwt_required()
 def cotizar():
     usuario = get_jwt_identity()
     print("Usuario autenticado:", usuario)
+
     try:
         producto = request.args.get("producto")
 
@@ -244,19 +246,12 @@ def cotizar():
         ancho = float(request.args.get("ancho", 30))
         alto = float(request.args.get("alto", 30))
 
-        print("=== NUEVA CONSULTA ===")
-        print("Producto:", producto)
-
         paises = top_paises_multilingue(producto)
 
         resultados = []
 
         for pais in paises:
-            print("Procesando:", pais)
-
             capital = obtener_capital(pais)
-            print("Capital:", capital)
-
             envio = calcular_envio(capital, pais, peso, largo, ancho, alto)
             resultados.append(envio)
 
@@ -269,7 +264,7 @@ def cotizar():
             "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
         }), 500
 
-
+# 🚀 RUN
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
