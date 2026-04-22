@@ -527,3 +527,403 @@
     text-align: center;
   }
 }
+/* ============================================================
+   EXPORTIA — Auth styles (Login & Register)
+   Agregar al final del styles.css existente
+   ============================================================ */
+
+/* ---------- Auth root (pantalla completa split) ---------- */
+.auth-root {
+  display: flex;
+  min-height: 100vh;
+  background: #050F1C;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-bg-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image:
+    linear-gradient(rgba(29, 255, 163, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 255, 163, 0.6) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* ---------- Panel izquierdo — branding ---------- */
+.auth-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 3.5rem;
+  border-right: 0.5px solid rgba(255, 255, 255, 0.07);
+  position: relative;
+  z-index: 1;
+}
+
+.auth-left-inner {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-left-title {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-weight: 400;
+  color: #E8EFF8;
+  line-height: 1.15;
+  margin-bottom: 1.2rem;
+}
+
+.auth-left-title em {
+  font-style: italic;
+  color: #1DFFA3;
+}
+
+.auth-left-sub {
+  font-size: 0.88rem;
+  color: rgba(232, 239, 248, 0.42);
+  line-height: 1.85;
+  font-weight: 300;
+  margin-bottom: 3rem;
+}
+
+.auth-left-stats {
+  display: flex;
+  gap: 2.5rem;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+  padding-top: 2rem;
+}
+
+.auth-left-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.auth-left-stat-num {
+  font-family: "Playfair Display", serif;
+  font-size: 1.9rem;
+  color: #1DFFA3;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.auth-left-stat-label {
+  font-size: 0.7rem;
+  color: rgba(232, 239, 248, 0.3);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* ---------- Panel derecho — formulario ---------- */
+.auth-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 3.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-form-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ---------- Header del formulario ---------- */
+.auth-form-header {
+  margin-bottom: 2.4rem;
+}
+
+.auth-form-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1DFFA3;
+  margin-bottom: 0.6rem;
+}
+
+.auth-form-title {
+  font-family: "Playfair Display", serif;
+  font-size: 2rem;
+  font-weight: 400;
+  color: #E8EFF8;
+  line-height: 1.1;
+}
+
+/* ---------- Campos ---------- */
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 1.8rem;
+}
+
+.auth-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.auth-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auth-label {
+  font-size: 0.78rem;
+  color: rgba(232, 239, 248, 0.5);
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
+.auth-forgot {
+  font-size: 0.72rem;
+  color: rgba(29, 255, 163, 0.65);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.auth-forgot:hover {
+  color: #1DFFA3;
+}
+
+.auth-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.88rem;
+  color: #E8EFF8;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.auth-input::placeholder {
+  color: rgba(232, 239, 248, 0.22);
+}
+
+.auth-input:focus {
+  border-color: rgba(29, 255, 163, 0.45);
+  background: rgba(29, 255, 163, 0.03);
+}
+
+/* ---------- Error ---------- */
+.auth-error {
+  font-size: 0.78rem;
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.07);
+  border: 0.5px solid rgba(255, 107, 107, 0.2);
+  border-radius: 4px;
+  padding: 9px 13px;
+  line-height: 1.5;
+}
+
+/* ---------- Botones auth ---------- */
+.auth-btn-primary {
+  width: 100%;
+  background: #1DFFA3;
+  border: none;
+  border-radius: 4px;
+  padding: 13px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #050F1C;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  background: #00E090;
+  transform: translateY(-1px);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-btn-ghost {
+  width: 100%;
+  background: transparent;
+  border: 0.5px solid rgba(232, 239, 248, 0.15);
+  border-radius: 4px;
+  padding: 12px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: rgba(232, 239, 248, 0.6);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  margin-bottom: 1.4rem;
+}
+
+.auth-btn-ghost:hover {
+  border-color: rgba(232, 239, 248, 0.35);
+  color: #E8EFF8;
+}
+
+/* ---------- Divider ---------- */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1.6rem 0 1rem;
+}
+
+.auth-divider span {
+  flex: 1;
+  height: 0.5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-divider p {
+  font-size: 0.75rem;
+  color: rgba(232, 239, 248, 0.28);
+  white-space: nowrap;
+}
+
+/* ---------- Spinner ---------- */
+.auth-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(5, 15, 28, 0.3);
+  border-top-color: #050F1C;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Volver ---------- */
+.auth-back {
+  text-align: center;
+  font-size: 0.78rem;
+  color: rgba(232, 239, 248, 0.28);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.auth-back:hover {
+  color: rgba(232, 239, 248, 0.6);
+}
+
+/* ---------- Checkbox (para Register) ---------- */
+.auth-checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.auth-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #1DFFA3;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.auth-checkbox-label {
+  font-size: 0.78rem;
+  color: rgba(232, 239, 248, 0.42);
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.auth-checkbox-label a {
+  color: #1DFFA3;
+  text-decoration: none;
+}
+
+.auth-checkbox-label a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Select (para Register) ---------- */
+.auth-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.88rem;
+  color: #E8EFF8;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(232,239,248,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  cursor: pointer;
+}
+
+.auth-select:focus {
+  border-color: rgba(29, 255, 163, 0.45);
+  background-color: rgba(29, 255, 163, 0.03);
+}
+
+.auth-select option {
+  background: #0A1828;
+  color: #E8EFF8;
+}
+
+/* ---------- Grid dos columnas (Register) ---------- */
+.auth-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .auth-root {
+    flex-direction: column;
+  }
+
+  .auth-left {
+    border-right: none;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.07);
+    padding: 2.5rem 1.5rem 2rem;
+    flex: none;
+  }
+
+  .auth-left-title {
+    font-size: 1.8rem;
+  }
+
+  .auth-left-stats {
+    gap: 1.8rem;
+  }
+
+  .auth-right {
+    padding: 2.5rem 1.5rem 3rem;
+    flex: none;
+  }
+
+  .auth-fields-grid {
+    grid-template-columns: 1fr;
+  }
+}
