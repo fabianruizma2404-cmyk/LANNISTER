@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../styles.css";
 
-const WHATSAPP_NUMBER = "573146758945";
+const WHATSAPP_NUMBER = "573108368811";
 const WHATSAPP_MESSAGE = "Hola, me interesa conocer más sobre los servicios de Exportia 🌍";
 
 export default function WhatsAppButton() {
