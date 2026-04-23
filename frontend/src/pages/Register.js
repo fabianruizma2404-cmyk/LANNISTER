@@ -32,7 +32,7 @@ export default function Register({ backend }) {
       return "La contraseña debe tener al menos 8 caracteres.";
     if (form.password !== form.confirmPassword)
       return "Las contraseñas no coinciden.";
-    if (form.codigo !== CODIGO_SECRETO)
+   if (form.codigo.trim() !== CODIGO_SECRETO)
       return "Código de acceso inválido. Contáctanos para obtenerlo.";
     if (!aceptaTerminos)
       return "Debes aceptar los términos y condiciones.";
@@ -283,7 +283,7 @@ export default function Register({ backend }) {
                 type="text"
                 placeholder="XXXXXXXX0000"
                 value={form.codigo}
-                onChange={set("codigo")}
+                onChange={(e) => setForm((prev) => ({ ...prev, codigo: e.target.value.trim() }))}
                 onKeyDown={handleKey}
                 autoComplete="off"
                 spellCheck={false}
