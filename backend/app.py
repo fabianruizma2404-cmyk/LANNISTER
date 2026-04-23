@@ -28,7 +28,8 @@ db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
 # 🔥 CREAR DB AUTOMÁTICAMENTE
-with app.app_context():
+@app.before_request
+def crear_tablas():
     db.create_all()
 
 # 🔥 Pytrends estable
