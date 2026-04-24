@@ -307,20 +307,20 @@ def analizar():
                 f"peso del envío: {m['peso']} kg)"
             )
         pais_1     = mercados[0].get("pais", "este mercado") if mercados else "este mercado"
-ciudad_1   = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
-costo_1    = mercados[0].get("costo", 0) if mercados else 0
-peso_1     = mercados[0].get("peso", 0) if mercados else 0
+        ciudad_1   = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
+        costo_1    = mercados[0].get("costo", 0) if mercados else 0
+        peso_1     = mercados[0].get("peso", 0) if mercados else 0
 
-       prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
+        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
 
-Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
-Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
+         Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
+        Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
 
-MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
+         MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
 
-INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
+         INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
 
-Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
+          Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
 
 JSON requerido:
 {{
