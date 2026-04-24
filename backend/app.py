@@ -320,55 +320,55 @@ def analizar():
 
          INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
 
-          Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
+         Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
 
-JSON requerido:
-{{
-  "mercados": [
-    {{
-      "pais": "nombre exacto del país",
-      "ciudad": "ciudad capital o principal",
-      "analisis": {{
-        "Precios REALES y específicos del producto '{producto}' en {pais_1} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${costo_1} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
+         JSON requerido:
+         {{
+         "mercados": [
+           {{
+            "pais": "nombre exacto del país",
+            "ciudad": "ciudad capital o principal",
+            "analisis": {{
+              "Precios REALES y específicos del producto '{producto}' en {pais_1} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${costo_1} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
 
-        "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
+             "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
 
-        "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {ciudad_1}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
+            "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {ciudad_1}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
 
-        "canales_y_compradores": "Canales de distribución ESPECÍFICOS para '{producto}' en este mercado: nombres de marketplaces locales relevantes, tipos de importadores o distribuidores que buscar, ferias internacionales del sector donde se puede hacer contacto (con nombres reales), y estrategia concreta de prospección de compradores — cómo contactarlos, qué plataformas B2B usar (Alibaba, Europages, etc.) y qué propuesta de valor resaltar siendo de origen colombiano.",
+            "canales_y_compradores": "Canales de distribución ESPECÍFICOS para '{producto}' en este mercado: nombres de marketplaces locales relevantes, tipos de importadores o distribuidores que buscar, ferias internacionales del sector donde se puede hacer contacto (con nombres reales), y estrategia concreta de prospección de compradores — cómo contactarlos, qué plataformas B2B usar (Alibaba, Europages, etc.) y qué propuesta de valor resaltar siendo de origen colombiano.",
 
-        "requisitos_y_certificaciones": "Requisitos técnicos, sanitarios y legales ESPECÍFICOS para importar '{producto}' en este país: certificaciones obligatorias (con nombre de la entidad que las emite), etiquetado requerido (idioma, información mínima), normas técnicas aplicables, registro sanitario si aplica, y documentos aduaneros indispensables (factura comercial, certificado de origen, packing list, BL o AWB). Indica si el certificado de origen colombiano da algún beneficio arancelario.",
+            "requisitos_y_certificaciones": "Requisitos técnicos, sanitarios y legales ESPECÍFICOS para importar '{producto}' en este país: certificaciones obligatorias (con nombre de la entidad que las emite), etiquetado requerido (idioma, información mínima), normas técnicas aplicables, registro sanitario si aplica, y documentos aduaneros indispensables (factura comercial, certificado de origen, packing list, BL o AWB). Indica si el certificado de origen colombiano da algún beneficio arancelario.",
 
-        "estrategia_entrada": "Plan de acercamiento concreto para entrar a este mercado específico en los próximos 6 meses: paso a paso desde la búsqueda del primer comprador hasta el primer envío. Incluye: plataformas de inteligencia comercial a usar (Legiscomex, Trademap, etc.), ferias o misiones comerciales relevantes, estrategia de precio de introducción, forma de pago recomendada (carta de crédito, pago anticipado, etc.), y consideraciones culturales o de negociación específicas de este país que una PYME colombiana debe conocer."
-      }}
-    }}
-  ]
-}}
+            "estrategia_entrada": "Plan de acercamiento concreto para entrar a este mercado específico en los próximos 6 meses: paso a paso desde la búsqueda del primer comprador hasta el primer envío. Incluye: plataformas de inteligencia comercial a usar (Legiscomex, Trademap, etc.), ferias o misiones comerciales relevantes, estrategia de precio de introducción, forma de pago recomendada (carta de crédito, pago anticipado, etc.), y consideraciones culturales o de negociación específicas de este país que una PYME colombiana debe conocer."
+              }}
+            }}
+           ]
+         }}
 
-IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE porque cada país tiene su propio contexto. Usa datos reales: aranceles reales, nombres de tratados reales, plataformas reales, ferias reales. Si no conoces el arancel exacto, da un rango realista basado en el sector del producto."""
+         IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE porque cada país tiene su propio contexto. Usa datos reales: aranceles reales, nombres de tratados reales, plataformas reales, ferias reales. Si no conoces el arancel exacto, da un rango realista basado en el sector del producto."""
 
-completion = groq_client.chat.completions.create(
-    model="llama-3.3-70b-versatile",
-    messages=[
-        {
+         completion = groq_client.chat.completions.create(
+         model="llama-3.3-70b-versatile",
+         messages=[
+           {
             "role": "system",
             "content": """Eres un consultor experto en comercio exterior colombiano. Tienes conocimiento profundo de:
-- Los TLC de Colombia (con USA, UE, CAN, Mercosur, Corea, etc.)
-- Aranceles del Sistema Armonizado por partidas arancelarias
-- Incoterms 2020 y su aplicación práctica para PYMEs
-- Plataformas de inteligencia comercial (Legiscomex, Trademap, Siex)
-- Ferias internacionales por sector
-- Estrategias de prospección B2B internacional
-Siempre respondes con JSON puro válido, sin texto adicional ni markdown. Cada mercado recibe análisis único y específico basado en la realidad de ese país."""
-        },
-        {
+             - Los TLC de Colombia (con USA, UE, CAN, Mercosur, Corea, etc.)
+             - Aranceles del Sistema Armonizado por partidas arancelarias
+             - Incoterms 2020 y su aplicación práctica para PYMEs
+             - Plataformas de inteligencia comercial (Legiscomex, Trademap, Siex)
+             - Ferias internacionales por sector
+             - Estrategias de prospección B2B internacional
+              Siempre respondes con JSON puro válido, sin texto adicional ni markdown. Cada mercado recibe análisis único y específico basado en la realidad de ese país."""
+           },
+           {
             "role": "user",
             "content": prompt
-        }
-    ],
-    temperature=0.6,
-    max_tokens=6000,
-)
+            }
+           ] ,
+           temperature=0.6,
+           max_tokens=6000,
+          )
 
         respuesta_raw = completion.choices[0].message.content.strip()
 
