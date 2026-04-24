@@ -2,25 +2,30 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../styles.css";
 
+const SECCIONES = [
+  { key: "precio_referencia",      label: "Precio de referencia",        icon: "💰" },
+  { key: "canales_distribucion",   label: "Canales de distribución",     icon: "🔗" },
+  { key: "requisitos_entrada",     label: "Requisitos de entrada",       icon: "📋" },
+  { key: "estrategia_posicionamiento", label: "Estrategia de posicionamiento", icon: "🎯" },
+  { key: "consideraciones_clave",  label: "Consideraciones clave",       icon: "⚡" },
+];
+
 export default function TradeAdvisor() {
   const BACKEND_URL = "https://lannister-production.up.railway.app";
   const nav = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
 
-  // Datos recibidos desde MarketScan
   const { producto, mercados } = location.state || {};
 
   const [loading, setLoading] = useState(false);
-  const [analisis, setAnalisis] = useState("");
+  const [analisis, setAnalisis] = useState(null);   // objeto JSON parseado
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [activeSeccion, setActiveSeccion] = useState("precio_referencia");
 
   useEffect(() => {
-    if (!producto || !mercados || mercados.length === 0) {
-      nav("/dashboard");
-      return;
-    }
+    if (!producto || !mercados || mercados.length === 0) { nav("/dashboard"); return; }
     if (!token) { nav("/login"); return; }
     generarAnalisis();
     // eslint-disable-next-line
@@ -29,7 +34,7 @@ export default function TradeAdvisor() {
   const generarAnalisis = async () => {
     setLoading(true);
     setError("");
-    setAnalisis("");
+    setAnalisis(null);
     try {
       const res = await fetch(`${BACKEND_URL}/analizar`, {
         method: "POST",
@@ -43,6 +48,7 @@ export default function TradeAdvisor() {
       if (!res.ok || data.error) {
         setError(data.error || "Error al generar el análisis.");
       } else {
+        // data.analisis es el objeto JSON con { mercados: [...] }
         setAnalisis(data.analisis);
       }
     } catch {
@@ -51,36 +57,12 @@ export default function TradeAdvisor() {
     setLoading(false);
   };
 
-  const rankColor = (i) => ["#1DFFA3", "#5B9CF6", "#A78BFA"][i] || "#E8EFF8";
+  const rankColor  = (i) => ["#1DFFA3", "#5B9CF6", "#A78BFA"][i] || "#E8EFF8";
+  const rankLabel  = (i) => ["Mayor potencial", "Alto potencial", "Potencial medio"][i] || "Potencial";
 
-  // Parsear el análisis en bloques por mercado
-  const parsearBloques = (texto) => {
-    if (!texto) return [];
-    const bloques = texto
-      .split(/(?=\n?[1-3]\.\s|\n?#{1,3}\s|\n?(?:Mercado|MERCADO)\s[1-3])/g)
-      .filter((b) => b.trim().length > 50);
-    return bloques.length >= 2 ? bloques : [texto];
-  };
-
-  // Parsear líneas de un bloque en secciones
-  const parsearLineas = (texto) => {
-    return texto
-      .trim()
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((linea) => {
-        const esTitulo = linea.match(/^\*\*|^\d\.\s\*\*|^#{1,3}\s/);
-        const texto = linea
-          .replace(/\*\*/g, "")
-          .replace(/^#+\s/, "")
-          .replace(/^\d\.\s/, "")
-          .trim();
-        return { esTitulo: !!esTitulo, texto };
-      })
-      .filter((l) => l.texto.length > 0);
-  };
-
-  const bloques = parsearBloques(analisis);
+  // Mercado activo desde el JSON del agente
+  const mercadoActivo = analisis?.mercados?.[activeTab];
+  const mercadoLogistica = mercados?.[activeTab];
 
   return (
     <div className="ta-root">
@@ -119,10 +101,8 @@ export default function TradeAdvisor() {
             MarketScan y genera una hoja de ruta estratégica completa.
           </p>
         </div>
-
-        {/* Resumen de mercados */}
         <div className="ta-mercados-resumen">
-          {mercados && mercados.map((m, i) => (
+          {mercados?.map((m, i) => (
             <button
               key={i}
               className={`ta-mercado-pill${activeTab === i ? " ta-mercado-pill--active" : ""}`}
@@ -144,7 +124,9 @@ export default function TradeAdvisor() {
             <div>
               <p className="dash-loading-title">TradeAdvisor analizando mercados</p>
               <p className="dash-loading-sub">
-                Procesando estrategia de exportación para <strong style={{ color: "#E8EFF8" }}>{producto}</strong> en {mercados?.length} mercados…
+                Procesando estrategia de exportación para{" "}
+                <strong style={{ color: "#E8EFF8" }}>{producto}</strong>{" "}
+                en {mercados?.length} mercados…
               </p>
             </div>
           </div>
@@ -156,8 +138,8 @@ export default function TradeAdvisor() {
               "Elaborando estrategia de posicionamiento",
               "Identificando consideraciones culturales y regulatorias",
             ].map((s, i) => (
-              <div className="dash-loading-step" key={s} style={{ animationDelay: `${i * 0.6}s` }}>
-                <div className="dash-loading-step-dot" style={{ animationDelay: `${i * 0.6}s`, background: "#A78BFA" }} />
+              <div className="dash-loading-step" key={s} style={{ animationDelay: `${i * 0.7}s` }}>
+                <div className="dash-loading-step-dot" style={{ animationDelay: `${i * 0.7}s`, background: "#A78BFA" }} />
                 <span>{s}</span>
               </div>
             ))}
@@ -177,18 +159,18 @@ export default function TradeAdvisor() {
         </div>
       )}
 
-      {/* ── ANÁLISIS ── */}
-      {!loading && bloques.length > 0 && (
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      {!loading && analisis && (
         <div className="ta-content">
 
-          {/* Tabs de navegación */}
+          {/* Tabs de países */}
           <div className="ta-tabs">
             {mercados.map((m, i) => (
               <button
                 key={i}
                 className={`ta-tab${activeTab === i ? " ta-tab--active" : ""}`}
                 style={{ "--tab-color": rankColor(i) }}
-                onClick={() => setActiveTab(i)}
+                onClick={() => { setActiveTab(i); setActiveSeccion("precio_referencia"); }}
               >
                 <span className="ta-tab-num">#{i + 1}</span>
                 <span className="ta-tab-pais">{m.pais}</span>
@@ -197,44 +179,104 @@ export default function TradeAdvisor() {
             ))}
           </div>
 
-          {/* Panel activo */}
-          {bloques[activeTab] && (
-            <div className="ta-panel" style={{ "--panel-color": rankColor(activeTab) }}>
+          {/* Panel del mercado activo */}
+          <div className="ta-panel" style={{ "--panel-color": rankColor(activeTab) }}>
 
-              {/* Métricas del mercado */}
-              <div className="ta-panel-metrics">
-                <div className="ta-metric">
-                  <span className="ta-metric-label">Distancia desde Bucaramanga</span>
-                  <span className="ta-metric-val">{mercados[activeTab]?.distancia.toLocaleString()} km</span>
-                </div>
-                <div className="ta-metric">
-                  <span className="ta-metric-label">Costo logístico estimado</span>
-                  <span className="ta-metric-val" style={{ color: rankColor(activeTab) }}>${mercados[activeTab]?.costo} USD</span>
-                </div>
-                <div className="ta-metric">
-                  <span className="ta-metric-label">Peso final del envío</span>
-                  <span className="ta-metric-val">{mercados[activeTab]?.peso} kg</span>
-                </div>
-                <div className="ta-metric">
-                  <span className="ta-metric-label">Ranking de potencial</span>
-                  <span className="ta-metric-val">
-                    {["Mayor", "Alto", "Medio"][activeTab] || "—"} potencial
-                  </span>
-                </div>
+            {/* Métricas logísticas */}
+            <div className="ta-panel-metrics">
+              <div className="ta-metric">
+                <span className="ta-metric-label">Distancia desde Bucaramanga</span>
+                <span className="ta-metric-val">{mercadoLogistica?.distancia.toLocaleString()} km</span>
               </div>
-
-              {/* Análisis estratégico */}
-              <div className="ta-panel-analisis">
-                {parsearLineas(bloques[activeTab]).map((linea, j) => (
-                  linea.esTitulo
-                    ? <h3 key={j} className="ta-section-title">{linea.texto}</h3>
-                    : <p key={j} className="ta-section-text">{linea.texto}</p>
-                ))}
+              <div className="ta-metric">
+                <span className="ta-metric-label">Costo logístico estimado</span>
+                <span className="ta-metric-val" style={{ color: rankColor(activeTab) }}>
+                  ${mercadoLogistica?.costo} USD
+                </span>
+              </div>
+              <div className="ta-metric">
+                <span className="ta-metric-label">Peso final del envío</span>
+                <span className="ta-metric-val">{mercadoLogistica?.peso} kg</span>
+              </div>
+              <div className="ta-metric">
+                <span className="ta-metric-label">Ranking de potencial</span>
+                <span className="ta-metric-val">{rankLabel(activeTab)}</span>
               </div>
             </div>
-          )}
 
-          {/* Acciones */}
+            {/* Navegación de secciones */}
+            <div className="ta-secciones-nav">
+              {SECCIONES.map((s) => (
+                <button
+                  key={s.key}
+                  className={`ta-seccion-btn${activeSeccion === s.key ? " ta-seccion-btn--active" : ""}`}
+                  style={{ "--sec-color": rankColor(activeTab) }}
+                  onClick={() => setActiveSeccion(s.key)}
+                >
+                  <span className="ta-seccion-icon">{s.icon}</span>
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Contenido de la sección activa */}
+            <div className="ta-seccion-content">
+              {mercadoActivo ? (
+                <>
+                  <div className="ta-seccion-header">
+                    <span className="ta-seccion-header-icon">
+                      {SECCIONES.find(s => s.key === activeSeccion)?.icon}
+                    </span>
+                    <h3 className="ta-seccion-title" style={{ color: rankColor(activeTab) }}>
+                      {SECCIONES.find(s => s.key === activeSeccion)?.label}
+                    </h3>
+                  </div>
+                  <p className="ta-seccion-text">
+                    {mercadoActivo.analisis?.[activeSeccion] || "Información no disponible."}
+                  </p>
+                </>
+              ) : (
+                <p className="ta-seccion-text" style={{ color: "rgba(232,239,248,0.3)" }}>
+                  No se encontró análisis para este mercado.
+                </p>
+              )}
+            </div>
+
+            {/* Navegación entre secciones */}
+            <div className="ta-seccion-nav-btns">
+              <button
+                className="ta-btn-back"
+                disabled={SECCIONES.findIndex(s => s.key === activeSeccion) === 0}
+                onClick={() => {
+                  const idx = SECCIONES.findIndex(s => s.key === activeSeccion);
+                  if (idx > 0) setActiveSeccion(SECCIONES[idx - 1].key);
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Anterior
+              </button>
+              <span className="ta-seccion-progress">
+                {SECCIONES.findIndex(s => s.key === activeSeccion) + 1} / {SECCIONES.length}
+              </span>
+              <button
+                className="ta-btn-retry"
+                disabled={SECCIONES.findIndex(s => s.key === activeSeccion) === SECCIONES.length - 1}
+                onClick={() => {
+                  const idx = SECCIONES.findIndex(s => s.key === activeSeccion);
+                  if (idx < SECCIONES.length - 1) setActiveSeccion(SECCIONES[idx + 1].key);
+                }}
+              >
+                Siguiente
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Acciones globales */}
           <div className="ta-actions">
             <button className="ta-btn-retry" onClick={generarAnalisis}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
