@@ -32,19 +32,21 @@ export default function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
-      if (!res.ok || data.error) {
-        setLoading(false);
-        return;
-      }
+      if (!res.ok || data.error) { setLoading(false); return; }
       setResultados(data.resultados || []);
     } catch {
-      // conexión fallida — loading se detiene
+      // conexión fallida
     }
     setLoading(false);
   };
 
-  const handleKey = (e) => { if (e.key === "Enter") buscar(); };
+  const ejecutarTradeAdvisor = () => {
+    nav("/tradeadvisor", {
+      state: { producto: buscado, mercados: resultados },
+    });
+  };
 
+  const handleKey = (e) => { if (e.key === "Enter") buscar(); };
   const rankLabel = (i) => ["Mayor potencial", "Alto potencial", "Potencial medio"][i] || "Potencial";
   const rankColor = (i) => ["#1DFFA3", "#5B9CF6", "#A78BFA"][i] || "#E8EFF8";
 
@@ -85,8 +87,6 @@ export default function Dashboard() {
           El agente analiza tendencias globales en tiempo real y calcula
           los mejores mercados destino para tu producto.
         </p>
-
-        {/* Buscador principal */}
         <div className="dash-search-box">
           <svg className="dash-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
@@ -99,11 +99,7 @@ export default function Dashboard() {
             onChange={(e) => setProducto(e.target.value)}
             onKeyDown={handleKey}
           />
-          <button
-            className="dash-search-btn"
-            onClick={buscar}
-            disabled={loading || !producto.trim()}
-          >
+          <button className="dash-search-btn" onClick={buscar} disabled={loading || !producto.trim()}>
             {loading
               ? <span className="auth-spinner" style={{ width: 16, height: 16, borderTopColor: "#050F1C" }} />
               : "Analizar"}
@@ -185,14 +181,11 @@ export default function Dashboard() {
                   <span className="dash-card-rank-num">#{i + 1}</span>
                   <span className="dash-card-rank-label">{rankLabel(i)}</span>
                 </div>
-
                 <div className="dash-card-country">
                   <h2 className="dash-card-pais">{r.pais}</h2>
                   <p className="dash-card-ciudad">{r.ciudad}</p>
                 </div>
-
                 <div className="dash-card-divider" />
-
                 <div className="dash-card-metrics">
                   <div className="dash-card-metric">
                     <span className="dash-card-metric-label">Distancia</span>
@@ -203,19 +196,35 @@ export default function Dashboard() {
                     <span className="dash-card-metric-val">{r.peso} kg</span>
                   </div>
                 </div>
-
                 <div className="dash-card-cost">
                   <span className="dash-card-cost-label">Costo estimado de envío</span>
-                  <span className="dash-card-cost-val">
-                    ${r.costo} <small>USD</small>
-                  </span>
+                  <span className="dash-card-cost-val">${r.costo} <small>USD</small></span>
                 </div>
-
                 <div className="dash-card-bar-bg">
                   <div className="dash-card-bar-fill" style={{ width: `${100 - i * 28}%` }} />
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ── BOTÓN TRADEADVISOR ── */}
+          <div className="dash-ta-cta">
+            <div className="dash-ta-cta-info">
+              <div className="dash-ta-cta-dot" />
+              <div>
+                <p className="dash-ta-cta-title">Agente TradeAdvisor disponible</p>
+                <p className="dash-ta-cta-sub">
+                  Genera una estrategia completa de exportación con precios,
+                  canales, requisitos y posicionamiento para cada mercado.
+                </p>
+              </div>
+            </div>
+            <button className="dash-ta-btn" onClick={ejecutarTradeAdvisor}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              Ejecutar Agente TradeAdvisor
+            </button>
           </div>
         </div>
       )}
