@@ -10,9 +10,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
+from groq import Groq
 
 app = Flask(__name__)
 CORS(app)
+
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # 🔥 FIX SUPABASE (MUY IMPORTANTE)
 uri = os.environ.get("DATABASE_URL")
@@ -270,6 +273,71 @@ def cotizar():
         return jsonify({
             "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
         }), 500
+
+@app.route("/analizar", methods=["POST"])
+@jwt_required()
+def analizar():
+    try:
+        data = request.json
+ 
+        if not data:
+            return jsonify({"error": "Datos requeridos"}), 400
+ 
+        producto = data.get("producto")
+        mercados = data.get("mercados")  # lista de resultados del /cotizar
+ 
+        if not producto or not mercados:
+            return jsonify({"error": "Faltan producto o mercados"}), 400
+ 
+        # Construir contexto de mercados para el prompt
+        mercados_texto = ""
+        for i, m in enumerate(mercados):
+            mercados_texto += (
+                f"\n{i+1}. {m['pais']} (ciudad: {m['ciudad']}, "
+                f"distancia: {m['distancia']} km, "
+                f"costo logístico estimado: ${m['costo']} USD, "
+                f"peso: {m['peso']} kg)"
+            )
+ 
+        prompt = f"""Eres un experto en comercio internacional y exportación con profundo conocimiento de mercados globales. 
+Tu cliente es una empresa colombiana ubicada en Bucaramanga, Santander, que desea exportar el siguiente producto: "{producto}".
+ 
+Según el análisis de tendencias globales, los mercados con mayor potencial identificados son:{mercados_texto}
+ 
+Para CADA uno de estos mercados, proporciona un análisis estratégico completo que incluya:
+ 
+1. **Precio de referencia**: Rango de precios típicos del producto en ese mercado (en USD), márgenes esperados y comparación con el costo logístico dado.
+2. **Canales de distribución**: Los canales más efectivos para llegar al consumidor final (e-commerce, mayoristas, distribuidores, ferias, etc.).
+3. **Requisitos de entrada**: Certificaciones, regulaciones aduaneras, aranceles o barreras técnicas relevantes para exportar este producto desde Colombia a ese mercado.
+4. **Estrategia de posicionamiento**: Cómo diferenciarse y posicionarse competitivamente, destacando ventajas del origen colombiano si aplica.
+5. **Consideraciones clave**: Aspectos culturales, estacionalidad, competencia local o cualquier factor crítico a tener en cuenta.
+ 
+Sé específico, práctico y directo. Evita generalidades. El análisis debe ser accionable para una PYME exportadora colombiana.
+Responde en español. Estructura tu respuesta claramente por mercado con los 5 puntos para cada uno."""
+ 
+        completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres un consultor experto en exportación y comercio internacional. Siempre respondes en español con análisis precisos, prácticos y estructurados."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=4096,
+        )
+ 
+        analisis = completion.choices[0].message.content
+ 
+        return jsonify({"analisis": analisis})
+ 
+    except Exception as e:
+        print("ERROR /analizar:", str(e))
+        return jsonify({"error": "Error al generar el análisis. Intenta nuevamente."}), 500
 
 # 🚀 RUN
 if __name__ == "__main__":
