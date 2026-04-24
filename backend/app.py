@@ -325,7 +325,7 @@ JSON requerido:
       "pais": "nombre exacto del país",
       "ciudad": "ciudad capital o principal",
       "analisis": {{
-        "precio_referencia": "Precios REALES y específicos del producto '{producto}' en {mercados[0]['pais'] if mercados else 'este mercado'} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
+        "Precios REALES y específicos del producto '{producto}' en {mercados[0].get('pais', 'este mercado') if mercados else 'este mercado'} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
 
         "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
 
