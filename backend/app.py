@@ -307,48 +307,64 @@ def analizar():
                 f"peso del envío: {m['peso']} kg)"
             )
 
-        prompt = f"""Eres un consultor senior especializado en comercio internacional y exportaciones desde Colombia hacia mercados globales.
+       prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
 
-Tu cliente es una PYME colombiana ubicada en Bucaramanga, Santander, que desea exportar: "{producto}".
+Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
+Peso del envío: {mercados[0]['peso']} kg | Origen: Bucaramanga, Santander, Colombia
 
-El análisis de tendencias globales identificó estos mercados con mayor potencial:{mercados_texto}
+MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
 
-INSTRUCCIÓN CRÍTICA: Debes responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después, sin bloques de código markdown, sin explicaciones. Solo el JSON puro.
+INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
 
-El JSON debe tener exactamente esta estructura:
+Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
+
+JSON requerido:
 {{
   "mercados": [
     {{
-      "pais": "nombre del país",
-      "ciudad": "nombre de la ciudad",
+      "pais": "nombre exacto del país",
+      "ciudad": "ciudad capital o principal",
       "analisis": {{
-        "precio_referencia": "Análisis detallado de precios típicos del producto en este mercado (rangos en USD), márgenes esperados para un exportador colombiano, comparación con el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD y punto de equilibrio mínimo de volumen.",
-        "canales_distribucion": "Descripción específica de los canales más efectivos para este mercado y producto: e-commerce local, marketplaces, distribuidores mayoristas, agentes comerciales, ferias internacionales relevantes, retailers especializados. Incluye nombres de plataformas o ferias si aplica.",
-        "requisitos_entrada": "Certificaciones obligatorias, regulaciones aduaneras específicas, aranceles aplicables (porcentaje), etiquetado requerido, normas técnicas o sanitarias, acuerdos comerciales entre Colombia y este país que puedan reducir aranceles.",
-        "estrategia_posicionamiento": "Cómo diferenciarse en este mercado específico. Ventajas del origen colombiano si aplican, segmento objetivo recomendado, propuesta de valor, precio sugerido de entrada, estrategia de marca y comunicación.",
-        "consideraciones_clave": "Factores críticos específicos de este mercado: estacionalidad de la demanda, competencia local e internacional, aspectos culturales relevantes, riesgos logísticos, barreras no arancelarias, recomendaciones finales y próximos pasos concretos."
+        "precio_referencia": "Precios REALES y específicos del producto '{producto}' en {mercados[0]['pais'] if mercados else 'este mercado'} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
+
+        "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
+
+        "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {mercados[0]['ciudad'] if mercados else 'este destino'}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
+
+        "canales_y_compradores": "Canales de distribución ESPECÍFICOS para '{producto}' en este mercado: nombres de marketplaces locales relevantes, tipos de importadores o distribuidores que buscar, ferias internacionales del sector donde se puede hacer contacto (con nombres reales), y estrategia concreta de prospección de compradores — cómo contactarlos, qué plataformas B2B usar (Alibaba, Europages, etc.) y qué propuesta de valor resaltar siendo de origen colombiano.",
+
+        "requisitos_y_certificaciones": "Requisitos técnicos, sanitarios y legales ESPECÍFICOS para importar '{producto}' en este país: certificaciones obligatorias (con nombre de la entidad que las emite), etiquetado requerido (idioma, información mínima), normas técnicas aplicables, registro sanitario si aplica, y documentos aduaneros indispensables (factura comercial, certificado de origen, packing list, BL o AWB). Indica si el certificado de origen colombiano da algún beneficio arancelario.",
+
+        "estrategia_entrada": "Plan de acercamiento concreto para entrar a este mercado específico en los próximos 6 meses: paso a paso desde la búsqueda del primer comprador hasta el primer envío. Incluye: plataformas de inteligencia comercial a usar (Legiscomex, Trademap, etc.), ferias o misiones comerciales relevantes, estrategia de precio de introducción, forma de pago recomendada (carta de crédito, pago anticipado, etc.), y consideraciones culturales o de negociación específicas de este país que una PYME colombiana debe conocer."
       }}
     }}
   ]
 }}
 
-Genera el análisis para los {len(mercados)} mercados identificados. Sé específico, usa datos reales cuando los conozcas, y proporciona información accionable para una PYME exportadora colombiana. Cada campo debe tener mínimo 3-4 oraciones con información concreta."""
+IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE porque cada país tiene su propio contexto. Usa datos reales: aranceles reales, nombres de tratados reales, plataformas reales, ferias reales. Si no conoces el arancel exacto, da un rango realista basado en el sector del producto."""
 
-        completion = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Eres un consultor experto en exportación y comercio internacional. Respondes ÚNICAMENTE con JSON válido y bien estructurado, sin texto adicional, sin markdown, sin bloques de código. Solo JSON puro."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.4,
-            max_tokens=4096,
-        )
+completion = groq_client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[
+        {
+            "role": "system",
+            "content": """Eres un consultor experto en comercio exterior colombiano. Tienes conocimiento profundo de:
+- Los TLC de Colombia (con USA, UE, CAN, Mercosur, Corea, etc.)
+- Aranceles del Sistema Armonizado por partidas arancelarias
+- Incoterms 2020 y su aplicación práctica para PYMEs
+- Plataformas de inteligencia comercial (Legiscomex, Trademap, Siex)
+- Ferias internacionales por sector
+- Estrategias de prospección B2B internacional
+Siempre respondes con JSON puro válido, sin texto adicional ni markdown. Cada mercado recibe análisis único y específico basado en la realidad de ese país."""
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ],
+    temperature=0.6,
+    max_tokens=6000,
+)
 
         respuesta_raw = completion.choices[0].message.content.strip()
 
