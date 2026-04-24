@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "../styles.css";
 
 const SECCIONES = [
-  { key: "precio_referencia",      label: "Precio de referencia",        icon: "💰" },
-  { key: "canales_distribucion",   label: "Canales de distribución",     icon: "🔗" },
-  { key: "requisitos_entrada",     label: "Requisitos de entrada",       icon: "📋" },
-  { key: "estrategia_posicionamiento", label: "Estrategia de posicionamiento", icon: "🎯" },
-  { key: "consideraciones_clave",  label: "Consideraciones clave",       icon: "⚡" },
+  { key: "precio_referencia",         label: "Precio de referencia",          icon: "💰" },
+  { key: "aranceles_y_tratados",      label: "Aranceles y tratados",          icon: "📜" },
+  { key: "incoterms_recomendados",    label: "Incoterms recomendados",        icon: "🚢" },
+  { key: "canales_y_compradores",     label: "Canales y compradores",         icon: "🔗" },
+  { key: "requisitos_y_certificaciones", label: "Requisitos y certificaciones", icon: "📋" },
+  { key: "estrategia_entrada",        label: "Estrategia de entrada",         icon: "🎯" },
 ];
 
 export default function TradeAdvisor() {
