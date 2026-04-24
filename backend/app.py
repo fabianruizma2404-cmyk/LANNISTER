@@ -306,11 +306,15 @@ def analizar():
                 f"costo logístico estimado: ${m['costo']} USD, "
                 f"peso del envío: {m['peso']} kg)"
             )
+        pais_1     = mercados[0].get("pais", "este mercado") if mercados else "este mercado"
+ciudad_1   = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
+costo_1    = mercados[0].get("costo", 0) if mercados else 0
+peso_1     = mercados[0].get("peso", 0) if mercados else 0
 
        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
 
 Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
-Peso del envío: {mercados[0]['peso']} kg | Origen: Bucaramanga, Santander, Colombia
+Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
 
 MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
 
@@ -325,11 +329,11 @@ JSON requerido:
       "pais": "nombre exacto del país",
       "ciudad": "ciudad capital o principal",
       "analisis": {{
-        "Precios REALES y específicos del producto '{producto}' en {mercados[0].get('pais', 'este mercado') if mercados else 'este mercado'} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
+        "Precios REALES y específicos del producto '{producto}' en {pais_1} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${costo_1} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
 
         "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
 
-        "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {mercados[0]['ciudad'] if mercados else 'este destino'}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
+        "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {ciudad_1}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
 
         "canales_y_compradores": "Canales de distribución ESPECÍFICOS para '{producto}' en este mercado: nombres de marketplaces locales relevantes, tipos de importadores o distribuidores que buscar, ferias internacionales del sector donde se puede hacer contacto (con nombres reales), y estrategia concreta de prospección de compradores — cómo contactarlos, qué plataformas B2B usar (Alibaba, Europages, etc.) y qué propuesta de valor resaltar siendo de origen colombiano.",
 
