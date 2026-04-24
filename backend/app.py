@@ -274,67 +274,99 @@ def cotizar():
             "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
         }), 500
 
+# ============================================================
+# EXPORTIA — Endpoint /analizar v2 con Groq + LLaMA 3.3
+# Respuesta estructurada en JSON para parseo confiable
+# ============================================================
+# Reemplaza el endpoint /analizar anterior en app.py
+# Los imports y groq_client ya deben estar del paso anterior
+# ============================================================
+
 @app.route("/analizar", methods=["POST"])
 @jwt_required()
 def analizar():
     try:
         data = request.json
- 
+
         if not data:
             return jsonify({"error": "Datos requeridos"}), 400
- 
+
         producto = data.get("producto")
-        mercados = data.get("mercados")  # lista de resultados del /cotizar
- 
+        mercados = data.get("mercados")
+
         if not producto or not mercados:
             return jsonify({"error": "Faltan producto o mercados"}), 400
- 
-        # Construir contexto de mercados para el prompt
+
         mercados_texto = ""
         for i, m in enumerate(mercados):
             mercados_texto += (
-                f"\n{i+1}. {m['pais']} (ciudad: {m['ciudad']}, "
-                f"distancia: {m['distancia']} km, "
+                f"\nMercado {i+1}: {m['pais']} "
+                f"(ciudad principal: {m['ciudad']}, "
+                f"distancia desde Bucaramanga: {m['distancia']} km, "
                 f"costo logístico estimado: ${m['costo']} USD, "
-                f"peso: {m['peso']} kg)"
+                f"peso del envío: {m['peso']} kg)"
             )
- 
-        prompt = f"""Eres un experto en comercio internacional y exportación con profundo conocimiento de mercados globales. 
-Tu cliente es una empresa colombiana ubicada en Bucaramanga, Santander, que desea exportar el siguiente producto: "{producto}".
- 
-Según el análisis de tendencias globales, los mercados con mayor potencial identificados son:{mercados_texto}
- 
-Para CADA uno de estos mercados, proporciona un análisis estratégico completo que incluya:
- 
-1. **Precio de referencia**: Rango de precios típicos del producto en ese mercado (en USD), márgenes esperados y comparación con el costo logístico dado.
-2. **Canales de distribución**: Los canales más efectivos para llegar al consumidor final (e-commerce, mayoristas, distribuidores, ferias, etc.).
-3. **Requisitos de entrada**: Certificaciones, regulaciones aduaneras, aranceles o barreras técnicas relevantes para exportar este producto desde Colombia a ese mercado.
-4. **Estrategia de posicionamiento**: Cómo diferenciarse y posicionarse competitivamente, destacando ventajas del origen colombiano si aplica.
-5. **Consideraciones clave**: Aspectos culturales, estacionalidad, competencia local o cualquier factor crítico a tener en cuenta.
- 
-Sé específico, práctico y directo. Evita generalidades. El análisis debe ser accionable para una PYME exportadora colombiana.
-Responde en español. Estructura tu respuesta claramente por mercado con los 5 puntos para cada uno."""
- 
+
+        prompt = f"""Eres un consultor senior especializado en comercio internacional y exportaciones desde Colombia hacia mercados globales.
+
+Tu cliente es una PYME colombiana ubicada en Bucaramanga, Santander, que desea exportar: "{producto}".
+
+El análisis de tendencias globales identificó estos mercados con mayor potencial:{mercados_texto}
+
+INSTRUCCIÓN CRÍTICA: Debes responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después, sin bloques de código markdown, sin explicaciones. Solo el JSON puro.
+
+El JSON debe tener exactamente esta estructura:
+{{
+  "mercados": [
+    {{
+      "pais": "nombre del país",
+      "ciudad": "nombre de la ciudad",
+      "analisis": {{
+        "precio_referencia": "Análisis detallado de precios típicos del producto en este mercado (rangos en USD), márgenes esperados para un exportador colombiano, comparación con el costo logístico de ${mercados[0]['costo'] if mercados else 0} USD y punto de equilibrio mínimo de volumen.",
+        "canales_distribucion": "Descripción específica de los canales más efectivos para este mercado y producto: e-commerce local, marketplaces, distribuidores mayoristas, agentes comerciales, ferias internacionales relevantes, retailers especializados. Incluye nombres de plataformas o ferias si aplica.",
+        "requisitos_entrada": "Certificaciones obligatorias, regulaciones aduaneras específicas, aranceles aplicables (porcentaje), etiquetado requerido, normas técnicas o sanitarias, acuerdos comerciales entre Colombia y este país que puedan reducir aranceles.",
+        "estrategia_posicionamiento": "Cómo diferenciarse en este mercado específico. Ventajas del origen colombiano si aplican, segmento objetivo recomendado, propuesta de valor, precio sugerido de entrada, estrategia de marca y comunicación.",
+        "consideraciones_clave": "Factores críticos específicos de este mercado: estacionalidad de la demanda, competencia local e internacional, aspectos culturales relevantes, riesgos logísticos, barreras no arancelarias, recomendaciones finales y próximos pasos concretos."
+      }}
+    }}
+  ]
+}}
+
+Genera el análisis para los {len(mercados)} mercados identificados. Sé específico, usa datos reales cuando los conozcas, y proporciona información accionable para una PYME exportadora colombiana. Cada campo debe tener mínimo 3-4 oraciones con información concreta."""
+
         completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
-                    "content": "Eres un consultor experto en exportación y comercio internacional. Siempre respondes en español con análisis precisos, prácticos y estructurados."
+                    "content": "Eres un consultor experto en exportación y comercio internacional. Respondes ÚNICAMENTE con JSON válido y bien estructurado, sin texto adicional, sin markdown, sin bloques de código. Solo JSON puro."
                 },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            temperature=0.7,
+            temperature=0.4,
             max_tokens=4096,
         )
- 
-        analisis = completion.choices[0].message.content
- 
-        return jsonify({"analisis": analisis})
- 
+
+        respuesta_raw = completion.choices[0].message.content.strip()
+
+        # Limpiar posibles bloques markdown que el modelo agregue
+        if respuesta_raw.startswith("```"):
+            respuesta_raw = respuesta_raw.split("```")[1]
+            if respuesta_raw.startswith("json"):
+                respuesta_raw = respuesta_raw[4:]
+        if respuesta_raw.endswith("```"):
+            respuesta_raw = respuesta_raw[:-3]
+
+        respuesta_raw = respuesta_raw.strip()
+
+        import json as json_lib
+        analisis_json = json_lib.loads(respuesta_raw)
+
+        return jsonify({"analisis": analisis_json})
+
     except Exception as e:
         print("ERROR /analizar:", str(e))
         return jsonify({"error": "Error al generar el análisis. Intenta nuevamente."}), 500
