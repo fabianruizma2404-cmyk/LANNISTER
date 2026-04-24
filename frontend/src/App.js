@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import TradeAdvisor from "./pages/TradeAdvisor";
 import WhatsAppButton from "./components/WhatsAppButton.js";
 
 const BACKEND_URL = "https://lannister-production.up.railway.app";
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login backend={BACKEND_URL} />} />
         <Route path="/registro" element={<Register backend={BACKEND_URL} />} />
+        <Route path="/tradeadvisor" element={<PrivateRoute><TradeAdvisor /></PrivateRoute>} />
         <Route
           path="/dashboard"
           element={
