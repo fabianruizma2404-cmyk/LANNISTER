@@ -7,7 +7,10 @@ import os
 import math
 import time
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    JWTManager, create_access_token,
+    jwt_required, get_jwt_identity
+)
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 from groq import Groq
@@ -17,7 +20,7 @@ CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# 🔥 FIX SUPABASE (MUY IMPORTANTE)
+# 🔥 FIX SUPABASE
 uri = os.environ.get("DATABASE_URL")
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -35,7 +38,7 @@ jwt = JWTManager(app)
 def crear_tablas():
     db.create_all()
 
-# 🔥 Pytrends estable
+# 🔥 Pytrends
 pytrends = TrendReq(
     hl='es',
     tz=360,
@@ -44,7 +47,7 @@ pytrends = TrendReq(
     backoff_factor=0.1
 )
 
-# 📍 Origen (Bucaramanga)
+# 📍 Origen
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
 
 # 👤 Modelo Usuario
@@ -86,11 +89,10 @@ def obtener_capital(pais):
     except Exception as e:
         raise Exception(f"Error capital {pais}: {str(e)}")
 
-# 📍 Geocoding
+# 📍 Geocode
 def geocode(ciudad):
     try:
         key = os.environ.get("OPENCAGE_KEY")
-
         if not key:
             raise Exception("Falta API KEY OpenCage")
 
@@ -117,9 +119,9 @@ def distancia(lat1, lon1, lat2, lon2):
     dlambda = math.radians(lon2 - lon1)
 
     a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-# 💰 Cálculo de envío
+# 💰 Envío
 def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
     coords = geocode(f"{ciudad}, {pais}")
 
@@ -146,7 +148,7 @@ def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
         "costo": round(costo, 2)
     }
 
-# 🧠 Google Trends multilenguaje
+# 🧠 Trends
 def top_paises_multilingue(producto):
     idiomas = ["en", "de", "fr"]
     resultados = pd.DataFrame()
@@ -189,12 +191,6 @@ def top_paises_multilingue(producto):
 
     return top3
 
-# 🚀 INIT DB (opcional)
-@app.route("/init-db")
-def init_db():
-    db.create_all()
-    return "DB lista"
-
 # 📝 REGISTER
 @app.route("/register", methods=["POST"])
 def register():
@@ -235,16 +231,12 @@ def login():
         return jsonify({"error": "Credenciales inválidas"}), 401
 
     token = create_access_token(identity=str(user.id))
-
     return jsonify({"token": token})
 
 # 📦 COTIZADOR
 @app.route("/cotizar")
 @jwt_required()
 def cotizar():
-    usuario = get_jwt_identity()
-    print("Usuario autenticado:", usuario)
-
     try:
         producto = request.args.get("producto")
 
@@ -259,7 +251,6 @@ def cotizar():
         paises = top_paises_multilingue(producto)
 
         resultados = []
-
         for pais in paises:
             capital = obtener_capital(pais)
             envio = calcular_envio(capital, pais, peso, largo, ancho, alto)
@@ -268,20 +259,10 @@ def cotizar():
         return jsonify({"resultados": resultados})
 
     except Exception as e:
-        print("ERROR FINAL:", str(e))
+        print("ERROR:", str(e))
+        return jsonify({"error": "Fallo externo"}), 500
 
-        return jsonify({
-            "error": "Estamos presentando fallos con servicios externos. Intenta nuevamente más tarde."
-        }), 500
-
-# ============================================================
-# EXPORTIA — Endpoint /analizar v2 con Groq + LLaMA 3.3
-# Respuesta estructurada en JSON para parseo confiable
-# ============================================================
-# Reemplaza el endpoint /analizar anterior en app.py
-# Los imports y groq_client ya deben estar del paso anterior
-# ============================================================
-
+# 🚀 ANALIZAR
 @app.route("/analizar", methods=["POST"])
 @jwt_required()
 def analizar():
@@ -301,95 +282,30 @@ def analizar():
         for i, m in enumerate(mercados):
             mercados_texto += (
                 f"\nMercado {i+1}: {m['pais']} "
-                f"(ciudad principal: {m['ciudad']}, "
-                f"distancia desde Bucaramanga: {m['distancia']} km, "
-                f"costo logístico estimado: ${m['costo']} USD, "
-                f"peso del envío: {m['peso']} kg)"
+                f"(ciudad: {m['ciudad']}, "
+                f"distancia: {m['distancia']} km, "
+                f"costo: ${m['costo']} USD)"
             )
-        pais_1     = mercados[0].get("pais", "este mercado") if mercados else "este mercado"
-        ciudad_1   = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
-        costo_1    = mercados[0].get("costo", 0) if mercados else 0
-        peso_1     = mercados[0].get("peso", 0) if mercados else 0
 
-        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
+        prompt = f"""
+        Producto: {producto}
+        Mercados: {mercados_texto}
+        """
 
-         Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
-        Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
+        completion = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
 
-         MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
+        respuesta = completion.choices[0].message.content.strip()
 
-         INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
-
-         Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal. Cada mercado tiene su propio contexto arancelario, cultural y logístico.
-
-         JSON requerido:
-         {{
-         "mercados": [
-           {{
-            "pais": "nombre exacto del país",
-            "ciudad": "ciudad capital o principal",
-            "analisis": {{
-              "Precios REALES y específicos del producto '{producto}' en {pais_1} (en USD por unidad o kg según aplique). Incluye: precio al consumidor final, precio mayorista, margen bruto estimado para el exportador colombiano, y análisis de si el costo logístico de ${costo_1} USD es viable según el volumen mínimo de exportación necesario para ser rentable.",
-
-             "aranceles_y_tratados": "Arancel de importación ESPECÍFICO que aplica para '{producto}' en este país (porcentaje exacto o rango). Indica si Colombia tiene TLC o acuerdo preferencial con este país que reduzca el arancel — menciona el nombre del tratado si existe. Explica el régimen aduanero, si aplica IVA a importaciones, y cualquier arancel antidumping o salvaguardia relevante para este producto.",
-
-            "incoterms_recomendados": "Incoterm(s) recomendados para exportar '{producto}' desde Bucaramanga hacia {ciudad_1}, explicando POR QUÉ ese incoterm es el más conveniente para una PYME colombiana sin experiencia logística internacional. Describe cómo se distribuyen los costos y riesgos, qué documentos se requieren, y qué tipo de seguro de carga se recomienda para esta ruta específica.",
-
-            "canales_y_compradores": "Canales de distribución ESPECÍFICOS para '{producto}' en este mercado: nombres de marketplaces locales relevantes, tipos de importadores o distribuidores que buscar, ferias internacionales del sector donde se puede hacer contacto (con nombres reales), y estrategia concreta de prospección de compradores — cómo contactarlos, qué plataformas B2B usar (Alibaba, Europages, etc.) y qué propuesta de valor resaltar siendo de origen colombiano.",
-
-            "requisitos_y_certificaciones": "Requisitos técnicos, sanitarios y legales ESPECÍFICOS para importar '{producto}' en este país: certificaciones obligatorias (con nombre de la entidad que las emite), etiquetado requerido (idioma, información mínima), normas técnicas aplicables, registro sanitario si aplica, y documentos aduaneros indispensables (factura comercial, certificado de origen, packing list, BL o AWB). Indica si el certificado de origen colombiano da algún beneficio arancelario.",
-
-            "estrategia_entrada": "Plan de acercamiento concreto para entrar a este mercado específico en los próximos 6 meses: paso a paso desde la búsqueda del primer comprador hasta el primer envío. Incluye: plataformas de inteligencia comercial a usar (Legiscomex, Trademap, etc.), ferias o misiones comerciales relevantes, estrategia de precio de introducción, forma de pago recomendada (carta de crédito, pago anticipado, etc.), y consideraciones culturales o de negociación específicas de este país que una PYME colombiana debe conocer."
-              }}
-            }}
-           ]
-         }}
-
-         IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE porque cada país tiene su propio contexto. Usa datos reales: aranceles reales, nombres de tratados reales, plataformas reales, ferias reales. Si no conoces el arancel exacto, da un rango realista basado en el sector del producto."""
-
-         completion = groq_client.chat.completions.create(
-         model="llama-3.3-70b-versatile",
-         messages=[
-           {
-            "role": "system",
-            "content": """Eres un consultor experto en comercio exterior colombiano. Tienes conocimiento profundo de:
-             - Los TLC de Colombia (con USA, UE, CAN, Mercosur, Corea, etc.)
-             - Aranceles del Sistema Armonizado por partidas arancelarias
-             - Incoterms 2020 y su aplicación práctica para PYMEs
-             - Plataformas de inteligencia comercial (Legiscomex, Trademap, Siex)
-             - Ferias internacionales por sector
-             - Estrategias de prospección B2B internacional
-              Siempre respondes con JSON puro válido, sin texto adicional ni markdown. Cada mercado recibe análisis único y específico basado en la realidad de ese país."""
-           },
-           {
-            "role": "user",
-            "content": prompt
-            }
-           ] ,
-           temperature=0.6,
-           max_tokens=6000,
-          )
-
-        respuesta_raw = completion.choices[0].message.content.strip()
-
-        # Limpiar posibles bloques markdown que el modelo agregue
-        if respuesta_raw.startswith("```"):
-            respuesta_raw = respuesta_raw.split("```")[1]
-            if respuesta_raw.startswith("json"):
-                respuesta_raw = respuesta_raw[4:]
-        if respuesta_raw.endswith("```"):
-            respuesta_raw = respuesta_raw[:-3]
-
-        respuesta_raw = respuesta_raw.strip()
-
-        import json as json_lib
-        analisis_json = json_lib.loads(respuesta_raw)
-
-        return jsonify({"analisis": analisis_json})
+        return jsonify({"analisis": respuesta})
 
     except Exception as e:
-        print("ERROR /analizar:", str(e))
-        return jsonify({"error": "Error al generar el análisis. Intenta nuevamente."}), 500
+        print("ERROR:", str(e))
+        return jsonify({"error": "Error en análisis"}), 500
 
 # 🚀 RUN
 if __name__ == "__main__":
