@@ -282,30 +282,89 @@ def analizar():
         for i, m in enumerate(mercados):
             mercados_texto += (
                 f"\nMercado {i+1}: {m['pais']} "
-                f"(ciudad: {m['ciudad']}, "
-                f"distancia: {m['distancia']} km, "
-                f"costo: ${m['costo']} USD)"
+                f"(ciudad principal: {m['ciudad']}, "
+                f"distancia desde Bucaramanga: {m['distancia']} km, "
+                f"costo logístico estimado: ${m['costo']} USD, "
+                f"peso del envío: {m['peso']} kg)"
             )
 
-        prompt = f"""
-        Producto: {producto}
-        Mercados: {mercados_texto}
-        """
+        pais_1 = mercados[0].get("pais", "este mercado") if mercados else "este mercado"
+        ciudad_1 = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
+        costo_1 = mercados[0].get("costo", 0) if mercados else 0
+        peso_1 = mercados[0].get("peso", 0) if mercados else 0
+
+        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
+
+Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
+Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
+
+MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
+
+INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
+
+Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal.
+
+Cada mercado tiene su propio contexto arancelario, cultural y logístico.
+
+JSON requerido:
+{{
+  "mercados": [
+    {{
+      "pais": "nombre exacto del país",
+      "ciudad": "ciudad capital o principal",
+      "analisis": {{
+        "precios": "Precios REALES y específicos del producto '{producto}' en {pais_1}...",
+        "aranceles_y_tratados": "Arancel específico y tratados...",
+        "incoterms_recomendados": "Incoterms recomendados...",
+        "canales_y_compradores": "Canales específicos...",
+        "requisitos_y_certificaciones": "Requisitos técnicos...",
+        "estrategia_entrada": "Plan de entrada..."
+      }}
+    }}
+  ]
+}}
+
+IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE."""
 
         completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "user", "content": prompt}
-            ]
+                {
+                    "role": "system",
+                    "content": """Eres un consultor experto en comercio exterior colombiano con conocimiento en TLC, aranceles, incoterms y estrategias B2B. Siempre respondes con JSON puro válido."""
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.6,
+            max_tokens=6000,
         )
 
-        respuesta = completion.choices[0].message.content.strip()
+        respuesta_raw = completion.choices[0].message.content.strip()
 
-        return jsonify({"analisis": respuesta})
+        # 🔥 Limpieza robusta de markdown
+        if respuesta_raw.startswith("```"):
+            partes = respuesta_raw.split("```")
+            if len(partes) > 1:
+                respuesta_raw = partes[1]
+            if respuesta_raw.startswith("json"):
+                respuesta_raw = respuesta_raw[4:]
+
+        if respuesta_raw.endswith("```"):
+            respuesta_raw = respuesta_raw[:-3]
+
+        respuesta_raw = respuesta_raw.strip()
+
+        import json as json_lib
+        analisis_json = json_lib.loads(respuesta_raw)
+
+        return jsonify({"analisis": analisis_json})
 
     except Exception as e:
-        print("ERROR:", str(e))
-        return jsonify({"error": "Error en análisis"}), 500
+        print("ERROR /analizar:", str(e))
+        return jsonify({"error": "Error al generar el análisis"}), 500
 
 # 🚀 RUN
 if __name__ == "__main__":
