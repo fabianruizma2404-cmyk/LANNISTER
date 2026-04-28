@@ -23,7 +23,7 @@ CORS(app)
 # ── Google Gemini ──
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 gemini = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-2.0-flash",
     generation_config=genai.GenerationConfig(
         temperature=0.4,
         max_output_tokens=8192,
