@@ -6,6 +6,7 @@ import requests
 import os
 import math
 import time
+import json as json_lib
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager, create_access_token,
@@ -38,15 +39,6 @@ jwt = JWTManager(app)
 def crear_tablas():
     db.create_all()
 
-# 🔥 Pytrends
-pytrends = TrendReq(
-    hl='es',
-    tz=360,
-    timeout=(10, 25),
-    retries=2,
-    backoff_factor=0.1
-)
-
 # 📍 Origen
 ORIGEN = {"lat": 7.119349, "lon": -73.122741}
 
@@ -59,16 +51,19 @@ class Usuario(db.Model):
     empresa = db.Column(db.String(150), nullable=True)
     sector = db.Column(db.String(100), nullable=True)
 
-# 🌍 Traducción
+# 🌍 Traducción — usando MyMemory (gratuito, sin servidor caído)
 def traducir(texto, idioma):
     try:
-        res = requests.post(
-            "https://libretranslate.de/translate",
-            json={"q": texto, "source": "auto", "target": idioma},
-            timeout=5
+        res = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": texto, "langpair": f"es|{idioma}"},
+            timeout=6
         )
         if res.status_code == 200:
-            return res.json()["translatedText"]
+            data = res.json()
+            traducido = data.get("responseData", {}).get("translatedMemory", "")
+            if traducido and traducido.lower() != texto.lower():
+                return traducido
         return texto
     except:
         return texto
@@ -148,48 +143,99 @@ def calcular_envio(ciudad, pais, peso, largo, ancho, alto):
         "costo": round(costo, 2)
     }
 
-# 🧠 Trends
+# 🧠 Crear instancia fresca de pytrends por request (evita estado corrupto)
+def get_pytrends():
+    return TrendReq(
+        hl='es',
+        tz=360,
+        timeout=(10, 30),
+        retries=3,
+        backoff_factor=0.5
+    )
+
+# 🧠 Trends — robusto con reintentos y fallback
 def top_paises_multilingue(producto):
-    idiomas = ["en", "de", "fr"]
+    # Traducir a varios idiomas para ampliar cobertura
+    idiomas = ["en", "de", "fr", "pt"]
+    traducciones = []
+    for lang in idiomas:
+        t = traducir(producto, lang)
+        if t and t.lower() != producto.lower():
+            traducciones.append(t)
+
+    # Siempre incluir el término original en español
+    keywords_candidatas = list(dict.fromkeys([producto] + traducciones))
+
+    print(f"[Trends] Keywords a consultar: {keywords_candidatas}")
+
     resultados = pd.DataFrame()
 
-    traducciones = [traducir(producto, lang) for lang in idiomas]
-    keywords = list(set([producto] + traducciones))
+    for idx, palabra in enumerate(keywords_candidatas):
+        # Pausa entre requests para evitar rate limiting de Google
+        if idx > 0:
+            time.sleep(2)
 
-    for palabra in keywords:
-        try:
-            pytrends.build_payload([palabra], timeframe='today 12-m', geo='')
+        intentos = 0
+        while intentos < 3:
+            try:
+                pt = get_pytrends()
+                pt.build_payload(
+                    [palabra],
+                    timeframe='today 12-m',
+                    geo=''
+                )
 
-            df = pytrends.interest_by_region(
-                resolution='COUNTRY',
-                inc_low_vol=True
-            )
+                time.sleep(1.5)
 
-            time.sleep(1)
+                df = pt.interest_by_region(
+                    resolution='COUNTRY',
+                    inc_low_vol=True,
+                    inc_geo_code=False
+                )
 
-            if df.empty:
-                continue
+                if df is None or df.empty:
+                    print(f"[Trends] Sin datos para: {palabra}")
+                    break
 
-            if resultados.empty:
-                resultados = df
-            else:
-                resultados = resultados.join(df, how="outer")
+                # Filtrar filas con valor 0 en todas las columnas
+                df = df[(df > 0).any(axis=1)]
 
-        except:
-            continue
+                if df.empty:
+                    print(f"[Trends] Solo ceros para: {palabra}")
+                    break
+
+                print(f"[Trends] OK para '{palabra}': {len(df)} países")
+
+                if resultados.empty:
+                    resultados = df.copy()
+                else:
+                    # join outer y renombrar para evitar colisiones
+                    resultados = resultados.join(df, how="outer", rsuffix=f"_{idx}")
+
+                break  # éxito, salir del while
+
+            except Exception as e:
+                intentos += 1
+                print(f"[Trends] Error intento {intentos} para '{palabra}': {str(e)}")
+                time.sleep(3 * intentos)
 
     if resultados.empty:
-        raise Exception("Google Trends sin datos")
+        raise Exception("Google Trends sin datos para ninguna keyword")
 
-    resultados["Promedio"] = resultados.mean(axis=1)
+    # Calcular promedio ignorando NaN
+    resultados["Promedio"] = resultados.mean(axis=1, skipna=True)
     resultados = resultados.sort_values(by="Promedio", ascending=False)
 
-    top3 = resultados.head(3).index.tolist()
+    # Filtrar países con promedio > 0
+    resultados = resultados[resultados["Promedio"] > 0]
 
-    if len(top3) < 3:
-        raise Exception("Menos de 3 países")
+    top5 = resultados.head(5).index.tolist()
+    print(f"[Trends] Top países: {top5}")
 
-    return top3
+    if len(top5) < 3:
+        raise Exception(f"Solo se encontraron {len(top5)} países con datos, se necesitan al menos 3")
+
+    return top5[:3]
 
 # 📝 REGISTER
 @app.route("/register", methods=["POST"])
@@ -259,8 +305,8 @@ def cotizar():
         return jsonify({"resultados": resultados})
 
     except Exception as e:
-        print("ERROR:", str(e))
-        return jsonify({"error": "Fallo externo"}), 500
+        print("ERROR /cotizar:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 # 🚀 ANALIZAR
 @app.route("/analizar", methods=["POST"])
@@ -278,89 +324,111 @@ def analizar():
         if not producto or not mercados:
             return jsonify({"error": "Faltan producto o mercados"}), 400
 
+        # Construir texto detallado de cada mercado
         mercados_texto = ""
         for i, m in enumerate(mercados):
             mercados_texto += (
-                f"\nMercado {i+1}: {m['pais']} "
-                f"(ciudad principal: {m['ciudad']}, "
-                f"distancia desde Bucaramanga: {m['distancia']} km, "
-                f"costo logístico estimado: ${m['costo']} USD, "
-                f"peso del envío: {m['peso']} kg)"
+                f"\n  - Mercado {i+1}: {m['pais']} | Ciudad: {m['ciudad']} | "
+                f"Distancia desde Bucaramanga: {m['distancia']} km | "
+                f"Costo logístico estimado: ${m['costo']} USD | "
+                f"Peso del envío: {m['peso']} kg"
             )
 
-        pais_1 = mercados[0].get("pais", "este mercado") if mercados else "este mercado"
-        ciudad_1 = mercados[0].get("ciudad", "este destino") if mercados else "este destino"
-        costo_1 = mercados[0].get("costo", 0) if mercados else 0
-        peso_1 = mercados[0].get("peso", 0) if mercados else 0
-
-        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia asesorando PYMEs colombianas en exportación. Conoces en detalle los acuerdos comerciales de Colombia, aranceles, incoterms, operadores logísticos y estrategias reales de entrada a mercados internacionales.
-
-Tu cliente exporta desde Bucaramanga, Colombia: "{producto}"
-Peso del envío: {peso_1} kg | Origen: Bucaramanga, Santander, Colombia
-
-MERCADOS IDENTIFICADOS POR ANÁLISIS DE TENDENCIAS:{mercados_texto}
-
-INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con JSON válido puro, sin texto adicional, sin markdown, sin bloques de código.
-
-Para cada mercado debes investigar y proporcionar información ESPECÍFICA y REAL de ese país, no genérica. Si el análisis de dos mercados parece similar, estás haciendo algo mal.
-
-Cada mercado tiene su propio contexto arancelario, cultural y logístico.
-
-JSON requerido:
-{{
-  "mercados": [
+        # Construir lista de mercados para el JSON de salida
+        estructura_mercados = ""
+        for i, m in enumerate(mercados):
+            estructura_mercados += f"""
     {{
-      "pais": "nombre exacto del país",
-      "ciudad": "ciudad capital o principal",
+      "pais": "{m['pais']}",
+      "ciudad": "{m['ciudad']}",
       "analisis": {{
-        "precios": "Precios REALES y específicos del producto '{producto}' en {pais_1}...",
-        "aranceles_y_tratados": "Arancel específico y tratados...",
-        "incoterms_recomendados": "Incoterms recomendados...",
-        "canales_y_compradores": "Canales específicos...",
-        "requisitos_y_certificaciones": "Requisitos técnicos...",
-        "estrategia_entrada": "Plan de entrada..."
+        "precios": "Indica el rango de precios REAL de '{producto}' en {m['pais']}: precio mínimo, precio promedio y precio premium en USD y en la moneda local. Menciona si hay diferencias de precio por canal (retail vs B2B vs online). Da ejemplos de precios reales que un importador en {m['ciudad']} pagaría.",
+        "aranceles_y_tratados": "Indica el arancel de importación exacto (%) aplicado a '{producto}' en {m['pais']}, partida arancelaria aproximada, si Colombia tiene TLC o acuerdo vigente con ese país y qué beneficio arancelario concreto implica, e impuestos adicionales (IVA, consumo, etc.).",
+        "incoterms_recomendados": "Recomienda los Incoterms más convenientes para exportar '{producto}' desde Bucaramanga hacia {m['ciudad']}, explicando por qué y qué responsabilidades asume el exportador colombiano en cada uno.",
+        "canales_y_compradores": "Describe los canales de distribución reales en {m['pais']} para '{producto}': importadores mayoristas, plataformas online locales, ferias del sector, cadenas de retail, brokers. Menciona nombres de empresas o plataformas reales si aplica.",
+        "requisitos_y_certificaciones": "Lista los requisitos técnicos, sanitarios, de etiquetado y certificaciones obligatorias para ingresar '{producto}' a {m['pais']}: normas técnicas, entidades reguladoras, idioma del etiquetado, permisos de importación.",
+        "estrategia_entrada": "Plan concreto de 3 pasos para entrar al mercado de {m['pais']} con '{producto}' desde Bucaramanga: qué hacer primero, contactos clave, plazos estimados y presupuesto inicial orientativo."
       }}
-    }}
-  ]
-}}
+    }}{"," if i < len(mercados) - 1 else ""}"""
 
-IMPORTANTE: Genera análisis para los {len(mercados)} mercados. Cada análisis debe ser COMPLETAMENTE DIFERENTE."""
+        prompt = f"""Eres un consultor senior de comercio exterior con 20 años de experiencia real asesorando PYMEs colombianas en exportación. Tienes conocimiento profundo y ESPECÍFICO de aranceles internacionales, acuerdos TLC de Colombia, incoterms, operadores logísticos y precios de mercado reales en distintos países.
+
+CONTEXTO DEL CLIENTE:
+- Producto a exportar: "{producto}"
+- Ciudad de origen: Bucaramanga, Santander, Colombia
+- Mercados objetivo identificados por tendencias de Google:{mercados_texto}
+
+TU TAREA: Generar un análisis de exportación DETALLADO, ESPECÍFICO y DIFERENTE para CADA UNO de los {len(mercados)} mercados. NO puedes dar respuestas genéricas. Cada mercado tiene su propio contexto arancelario, precios reales, canales y requisitos.
+
+REGLAS ESTRICTAS:
+1. En "precios": SIEMPRE incluir rangos numéricos reales en USD (ej: "$8 - $15 USD por unidad en retail", "$5 - $9 USD precio mayorista"). NO omitas nunca los precios.
+2. En "aranceles_y_tratados": incluir el porcentaje exacto de arancel y el nombre del acuerdo comercial si existe.
+3. Cada campo debe tener mínimo 3 oraciones con información concreta y diferente entre mercados.
+4. Responde ÚNICAMENTE con JSON puro válido, sin texto adicional, sin markdown, sin bloques de código.
+
+JSON requerido (completa los campos con información real, no los dejes como instrucciones):
+{{
+  "mercados": [{estructura_mercados}
+  ]
+}}"""
 
         completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
-                    "content": """Eres un consultor experto en comercio exterior colombiano con conocimiento en TLC, aranceles, incoterms y estrategias B2B. Siempre respondes con JSON puro válido."""
+                    "content": (
+                        "Eres un experto en comercio exterior colombiano. "
+                        "Conoces en detalle los TLC de Colombia, aranceles de importación por país, "
+                        "incoterms, precios de mercado internacionales y canales de distribución B2B. "
+                        "SIEMPRE respondes con JSON puro válido, sin markdown, sin texto extra. "
+                        "NUNCA omites el campo de precios: siempre incluyes rangos numéricos reales en USD. "
+                        "Cada mercado tiene análisis completamente distinto y específico."
+                    )
                 },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            temperature=0.6,
-            max_tokens=6000,
+            temperature=0.75,
+            max_tokens=8000,
         )
 
         respuesta_raw = completion.choices[0].message.content.strip()
 
-        # 🔥 Limpieza robusta de markdown
-        if respuesta_raw.startswith("```"):
-            partes = respuesta_raw.split("```")
-            if len(partes) > 1:
-                respuesta_raw = partes[1]
-            if respuesta_raw.startswith("json"):
-                respuesta_raw = respuesta_raw[4:]
+        # 🔥 Limpieza robusta de markdown (múltiples casos)
+        # Caso: ```json ... ```
+        if "```" in respuesta_raw:
+            # Extraer contenido entre los backticks
+            import re
+            match = re.search(r'```(?:json)?\s*([\s\S]*?)```', respuesta_raw)
+            if match:
+                respuesta_raw = match.group(1).strip()
+            else:
+                # Fallback: quitar todos los backticks
+                respuesta_raw = respuesta_raw.replace("```json", "").replace("```", "").strip()
 
-        if respuesta_raw.endswith("```"):
-            respuesta_raw = respuesta_raw[:-3]
+        # Caso: texto antes del primer {
+        primer_llave = respuesta_raw.find("{")
+        if primer_llave > 0:
+            respuesta_raw = respuesta_raw[primer_llave:]
+
+        # Caso: texto después del último }
+        ultima_llave = respuesta_raw.rfind("}")
+        if ultima_llave != -1 and ultima_llave < len(respuesta_raw) - 1:
+            respuesta_raw = respuesta_raw[:ultima_llave + 1]
 
         respuesta_raw = respuesta_raw.strip()
 
-        import json as json_lib
         analisis_json = json_lib.loads(respuesta_raw)
 
         return jsonify({"analisis": analisis_json})
+
+    except json_lib.JSONDecodeError as e:
+        print("ERROR JSON /analizar:", str(e))
+        print("Respuesta raw:", respuesta_raw[:500])
+        return jsonify({"error": "El modelo no devolvió JSON válido, intenta de nuevo"}), 500
 
     except Exception as e:
         print("ERROR /analizar:", str(e))
